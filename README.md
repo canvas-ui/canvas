@@ -51,7 +51,7 @@ story.
 
 ## Package naming & distribution
 
-Packages use the `@canvas-os/*` scope — the product brands as Canvas OS; the
+Packages use the `@augmentd-labs/canvas-*` scope — the product brands as Canvas OS; the
 GitHub org login is unrelated plumbing and npm scopes are independent of it.
 The npm org claim is pending (nothing here publishes yet).
 

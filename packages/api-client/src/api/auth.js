@@ -1,6 +1,6 @@
 'use strict';
 
-import { routes } from '@canvas-os/protocol';
+import { routes } from '@augmentd-labs/canvas-protocol';
 
 /** @param {import('../client.js').CanvasApiClient} c */
 export function makeAuthApi(c) {

@@ -2,8 +2,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { unwrap, CanvasError } from '@canvas-os/api-client';
-import { WORKSPACE_NOT_ACTIVE, WORKSPACE_NOT_ACTIVE_MESSAGE, isWorkspaceNotActive } from '@canvas-os/protocol';
+import { unwrap, CanvasError } from '@augmentd-labs/canvas-api-client';
+import { WORKSPACE_NOT_ACTIVE, WORKSPACE_NOT_ACTIVE_MESSAGE, isWorkspaceNotActive } from '@augmentd-labs/canvas-protocol';
 
 test('success envelope returns payload', () => {
     const payload = { a: 1 };

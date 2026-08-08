@@ -1,7 +1,7 @@
 {
-    "name": "@canvas-os/api-client",
+    "name": "@augmentd-labs/canvas-api-client",
     "version": "0.1.0",
-    "description": "Fetch-based Canvas REST client over @canvas-os/protocol",
+    "description": "Fetch-based Canvas REST client over @augmentd-labs/canvas-protocol",
     "license": "AGPL-3.0-or-later",
     "type": "module",
     "exports": {
@@ -21,7 +21,7 @@
         "node": ">=20"
     },
     "dependencies": {
-        "@canvas-os/protocol": "workspace:*"
+        "@augmentd-labs/canvas-protocol": "workspace:*"
     },
     "repository": {
         "type": "git",

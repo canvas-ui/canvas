@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, rm } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { CanvasApiClient } from '@canvas-os/api-client';
+import { CanvasApiClient } from '@augmentd-labs/canvas-api-client';
 import { startServer } from './_helpers.js';
 
 function uploadServer() {

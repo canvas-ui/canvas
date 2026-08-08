@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildFileDoc } from '@canvas-os/schemas';
+import { buildFileDoc } from '@augmentd-labs/canvas-schemas';
 
 const wire = (doc) => JSON.parse(JSON.stringify(doc));
 

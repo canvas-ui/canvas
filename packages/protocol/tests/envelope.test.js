@@ -9,7 +9,7 @@ import {
     WORKSPACE_NOT_ACTIVE,
     WORKSPACE_NOT_ACTIVE_MESSAGE,
     isWorkspaceNotActive
-} from '@canvas-os/protocol';
+} from '@augmentd-labs/canvas-protocol';
 
 test('status constants match the wire values', () => {
     assert.equal(STATUS_SUCCESS, 'success');

@@ -1,6 +1,6 @@
 'use strict';
 
-import { routes } from '@canvas-os/protocol';
+import { routes } from '@augmentd-labs/canvas-protocol';
 
 const ctx = routes.contexts;
 

@@ -29,13 +29,13 @@ importers:
 
   apps/cli:
     dependencies:
-      '@canvas-os/api-client':
+      '@augmentd-labs/canvas-api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@canvas-os/protocol':
+      '@augmentd-labs/canvas-protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@canvas-os/schemas':
+      '@augmentd-labs/canvas-schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
       chalk:
@@ -87,7 +87,7 @@ importers:
 
   packages/api-client:
     dependencies:
-      '@canvas-os/protocol':
+      '@augmentd-labs/canvas-protocol':
         specifier: workspace:*
         version: link:../protocol
 
