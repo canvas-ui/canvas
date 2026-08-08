@@ -1,0 +1,28 @@
+{
+    "name": "@canvas/protocol",
+    "version": "0.1.0",
+    "description": "Canvas wire contract: response envelope, error codes, REST route builders, websocket event names",
+    "license": "AGPL-3.0-or-later",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./types/index.d.ts",
+            "default": "./src/index.js"
+        }
+    },
+    "files": [
+        "src",
+        "types"
+    ],
+    "scripts": {
+        "test": "node --test"
+    },
+    "engines": {
+        "node": ">=20"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/canvas-ui/canvas.git",
+        "directory": "packages/protocol"
+    }
+}
