@@ -1,6 +1,6 @@
 'use strict';
 
-import { API_BASE, DEFAULT_TIMEOUT_MS, HEADER_APP_NAME, isEnvelope, routes } from '@canvas/protocol';
+import { API_BASE, DEFAULT_TIMEOUT_MS, HEADER_APP_NAME, isEnvelope, routes } from '@canvas-os/protocol';
 import { CanvasError } from './errors.js';
 import { unwrap } from './unwrap.js';
 import { toFetchBody } from './body.js';
@@ -89,7 +89,7 @@ export class CanvasApiClient {
 
     /**
      * @param {string} method
-     * @param {string} path route relative to apiBase (see @canvas/protocol routes)
+     * @param {string} path route relative to apiBase (see @canvas-os/protocol routes)
      * @param {Object} [options]
      * @param {Object} [options.params] query parameters
      * @param {*} [options.data] request body (object → JSON; Buffer/Blob/stream pass through)

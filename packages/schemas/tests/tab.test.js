@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildTabDoc } from '@canvas/schemas';
+import { buildTabDoc } from '@canvas-os/schemas';
 
 test('parity: url + title emits exactly the historical cli shape', () => {
     assert.deepEqual(buildTabDoc('https://example.com', { title: 'Example' }), {

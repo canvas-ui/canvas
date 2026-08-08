@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { routes } from '@canvas/protocol';
+import { routes } from '@canvas-os/protocol';
 
 // Parity contract: these strings must match what the pre-monorepo cli
 // (src/core/transport/rest.js) sent. Encode driver/address/treeName;

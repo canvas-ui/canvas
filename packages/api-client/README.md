@@ -1,11 +1,11 @@
-# @canvas/api-client
+# @canvas-os/api-client
 
-Fetch-based Canvas REST client built on `@canvas/protocol`. Consolidates the
+Fetch-based Canvas REST client built on `@canvas-os/protocol`. Consolidates the
 REST access every client was reimplementing; scope grows client-by-client
 (the cli's surface came first).
 
 ```js
-import { CanvasApiClient } from '@canvas/api-client';
+import { CanvasApiClient } from '@canvas-os/api-client';
 
 const api = new CanvasApiClient({
     baseUrl: 'https://canvas.example.com:8001',
@@ -24,7 +24,7 @@ const workspaces = await api.workspaces.list(); // unwrapped payload
   of the HTTP status they rode in on.
 - **Policy stays with the caller.** No auto-redirect on 401, no workspace
   autostart; the client surfaces typed errors and callers decide
-  (`isWorkspaceNotActive` from `@canvas/protocol`, `isNetworkError` from
+  (`isWorkspaceNotActive` from `@canvas-os/protocol`, `isNetworkError` from
   here).
 - **`isNetworkError`** matches both undici/node codes (`ECONNREFUSED`, …) and
   Bun's fetch codes (`ConnectionRefused`, …) — the same code runs under node

@@ -1,4 +1,4 @@
-# @canvas/protocol
+# @canvas-os/protocol
 
 The Canvas wire contract, client side: the response envelope shape, machine
 error codes, `/rest/v2` route builders and websocket (Socket.IO) event names.
@@ -14,7 +14,7 @@ not part of this contract.
 ## Coverage rule
 
 `routes.js` covers what shipped consumers actually call (currently: the cli via
-`@canvas/api-client`, plus ping and schema lookups). It is **not** a
+`@canvas-os/api-client`, plus ping and schema lookups). It is **not** a
 transcription of all of API.md — routes are added when a consumer lands, so
 every entry is verified by real usage.
 

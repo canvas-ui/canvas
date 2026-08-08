@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tagsToFeatures, featuresToTags, clientAppFeature } from '@canvas/schemas';
+import { tagsToFeatures, featuresToTags, clientAppFeature } from '@canvas-os/schemas';
 
 test('tagsToFeatures: array input, trim, drop empties, dedupe, prefix', () => {
     assert.deepEqual(tagsToFeatures(['work', ' work ', '', 'home', 'work']), ['tag/work', 'tag/home']);

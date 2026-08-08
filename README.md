@@ -49,9 +49,16 @@ The open layer is planned to move to Apache-2.0 in a later, announced phase of
 the migration; until that happens the per-directory terms above are the whole
 story.
 
-## Package naming
+## Package naming & distribution
 
-Packages use the `@canvas/*` scope. The scope is not yet claimed on npmjs
-(claim attempt pending); nothing here publishes yet, and the recorded fallback
-is a mechanical rename to `@canvas-ui/*` before the first publish (GitHub
-Packages would require the org scope anyway).
+Packages use the `@canvas-os/*` scope — the product brands as Canvas OS; the
+GitHub org login is unrelated plumbing and npm scopes are independent of it.
+The npm org claim is pending (nothing here publishes yet).
+
+Distribution plan: workspace links inside the monorepo (forever), `file:`
+links to sibling checkouts during the transition, **GitHub Release tarballs**
+(`pnpm pack` per package, attached to a tag) once canvas-server's CI/Docker
+needs fetchable artifacts, and public npmjs when the packages relicense and
+third-party adoption starts. GitHub Packages is deliberately not used: it
+requires an auth token even for public installs and chains the scope to the
+org name.

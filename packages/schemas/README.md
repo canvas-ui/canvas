@@ -1,4 +1,4 @@
-# @canvas/schemas
+# @canvas-os/schemas
 
 Canvas document schema ids, `schemaVersion` constants, the `tag/` feature
 vocabulary and the document builders every client was hand-rolling.

@@ -9,7 +9,7 @@ import {
     WORKSPACE_NOT_ACTIVE,
     WORKSPACE_NOT_ACTIVE_MESSAGE,
     isWorkspaceNotActive
-} from '@canvas/protocol';
+} from '@canvas-os/protocol';
 
 test('status constants match the wire values', () => {
     assert.equal(STATUS_SUCCESS, 'success');

@@ -1,6 +1,6 @@
 'use strict';
 
-import { isEnvelope, STATUS_ERROR } from '@canvas/protocol';
+import { isEnvelope, STATUS_ERROR } from '@canvas-os/protocol';
 import { CanvasError } from './errors.js';
 
 /**

@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CanvasApiClient, CanvasError, isNetworkError } from '@canvas/api-client';
+import { CanvasApiClient, CanvasError, isNetworkError } from '@canvas-os/api-client';
 import { startServer, sendEnvelope } from './_helpers.js';
 
 const mk = (baseUrl, extra = {}) =>

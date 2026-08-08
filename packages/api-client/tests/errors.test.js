@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CanvasError, AuthError, NotFoundError, isNetworkError } from '@canvas/api-client';
+import { CanvasError, AuthError, NotFoundError, isNetworkError } from '@canvas-os/api-client';
 
 test('instanceof chains hold (cli error handling depends on them)', () => {
     const auth = new AuthError('no');

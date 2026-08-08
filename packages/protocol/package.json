@@ -1,5 +1,5 @@
 {
-    "name": "@canvas/protocol",
+    "name": "@canvas-os/protocol",
     "version": "0.1.0",
     "description": "Canvas wire contract: response envelope, error codes, REST route builders, websocket event names",
     "license": "AGPL-3.0-or-later",

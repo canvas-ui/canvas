@@ -1,6 +1,6 @@
 'use strict';
 
-import { routes } from '@canvas/protocol';
+import { routes } from '@canvas-os/protocol';
 
 const ctx = routes.contexts;
 

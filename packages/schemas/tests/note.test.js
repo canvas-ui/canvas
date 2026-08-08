@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildNoteDoc } from '@canvas/schemas';
+import { buildNoteDoc } from '@canvas-os/schemas';
 
 // Parity fixtures: literal outputs of the pre-monorepo cli builder
 // (canvas-cli src/modules/workspace/lib/docbuilders.js).
