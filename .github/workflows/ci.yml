@@ -20,3 +20,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run test
+      - run: pnpm --filter canvas-cli run build:dev
+      - run: ./apps/cli/dist/canvas-dev --version
+      - run: ./apps/cli/dist/canvas-dev --help
