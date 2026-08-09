@@ -10,10 +10,10 @@ migration plan lives there in `TODO.monorepo-migration.md`.
 ```
 apps/
   cli                    Canvas CLI (bun-compiled binaries)
-  web                    (arrives in Phase 3)
-  desktop                (arrives in Phase 3, Tauri)
-  browser-extension      (arrives in Phase 3)
-  shell                  (arrives in Phase 3)
+  desktop                Tauri desktop app (frontend builds in CI; Rust bundle needs the Tauri toolchain)
+  browser-extension      Chromium + Firefox extension (esbuild)
+  shell                  bash client — not an npm package, pnpm skips it
+  web                    (arrives with the web repoint slice)
 packages/
   protocol               wire contract: envelope, error codes, routes, events
   schemas                document schema ids, versions, builders
@@ -53,7 +53,7 @@ story.
 
 Packages use the `@augmentd-labs/canvas-*` scope — the product brands as Canvas OS; the
 GitHub org login is unrelated plumbing and npm scopes are independent of it.
-The npm org claim is pending (nothing here publishes yet).
+The `augmentd-labs` npm org is claimed; nothing here publishes yet.
 
 Distribution plan: workspace links inside the monorepo (forever), `file:`
 links to sibling checkouts during the transition, **GitHub Release tarballs**

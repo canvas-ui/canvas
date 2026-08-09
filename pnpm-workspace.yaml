@@ -4,8 +4,11 @@ packages:
 
 # pnpm 10 blocks dependency lifecycle scripts by default; allowlist per package.
 # - bun: apps/cli devDep; its postinstall downloads the bun binary used by build:*
-# - esbuild, sharp: pre-listed for apps/web and the browser extension (Phase 3)
+# - esbuild: apps/browser-extension + vite (desktop, web)
+# - sharp: pre-listed for apps/web (Phase 3)
+# - @tauri-apps/cli: apps/desktop; postinstall downloads the tauri binary
 onlyBuiltDependencies:
   - bun
   - esbuild
   - sharp
+  - "@tauri-apps/cli"

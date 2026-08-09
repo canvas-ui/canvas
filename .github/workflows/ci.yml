@@ -23,3 +23,7 @@ jobs:
       - run: pnpm --filter canvas-cli run build:dev
       - run: ./apps/cli/dist/canvas-dev --version
       - run: ./apps/cli/dist/canvas-dev --help
+      # Frontend builds only; the Tauri (Rust) bundle needs its own toolchain
+      # and is not part of this pipeline yet.
+      - run: pnpm --filter canvas-desktop run build
+      - run: pnpm --filter canvas-browser-extension run build
