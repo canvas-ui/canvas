@@ -54,6 +54,7 @@ test('hooks: hookPath stays raw (hierarchical, server splat-routed)', () => {
 test('contexts, agents, roles', () => {
     assert.equal(routes.contexts.byId('c1'), '/contexts/c1');
     assert.equal(routes.contexts.blobs('c1'), '/contexts/c1/blobs');
+    assert.equal(routes.contexts.url('c1'), '/contexts/c1/url');
     assert.equal(routes.agents.prompt('a1'), '/agents/a1/prompt');
     assert.equal(routes.roles.byId('r1'), '/roles/r1');
 });

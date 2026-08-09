@@ -62,7 +62,8 @@ export const contexts = {
     tree: (id) => `/contexts/${id}/tree`,
     documents: (id) => `/contexts/${id}/documents`,
     blobs: (id) => `/contexts/${id}/blobs`,
-    dotfiles: (id) => `/contexts/${id}/dotfiles`
+    dotfiles: (id) => `/contexts/${id}/dotfiles`,
+    url: (id) => `/contexts/${id}/url`
 };
 
 export const agents = {

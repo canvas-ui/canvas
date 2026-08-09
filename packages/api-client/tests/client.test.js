@@ -71,6 +71,20 @@ test('removeTreePath end-to-end: encoded treeName, raw path, recursive=false on 
     }
 });
 
+test('contexts.setUrl posts {url} to /contexts/:id/url', async () => {
+    const srv = await startServer((req, res) => sendEnvelope(res, { payload: { url: 'ctx://x' } }));
+    try {
+        const api = mk(srv.baseUrl);
+        await api.contexts.setUrl('c1', 'ctx://foo/bar');
+        const r = srv.requests[0];
+        assert.equal(r.method, 'POST');
+        assert.equal(r.url, '/rest/v2/contexts/c1/url');
+        assert.deepEqual(JSON.parse(r.body.toString()), { url: 'ctx://foo/bar' });
+    } finally {
+        await srv.close();
+    }
+});
+
 test('auth.login merges strategy:auto', async () => {
     const srv = await startServer((req, res) => sendEnvelope(res, { payload: { token: 't' } }));
     try {

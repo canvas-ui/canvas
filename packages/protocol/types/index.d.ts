@@ -72,6 +72,7 @@ export declare namespace routes {
         documents(id: string): string;
         blobs(id: string): string;
         dotfiles(id: string): string;
+        url(id: string): string;
     };
     const agents: {
         collection(): string;

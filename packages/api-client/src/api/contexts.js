@@ -23,6 +23,8 @@ export function makeContextsApi(c) {
                 data,
                 headers: { 'Content-Type': 'application/octet-stream' }
             }),
-        dotfiles: (id) => c.get(ctx.dotfiles(id))
+        dotfiles: (id) => c.get(ctx.dotfiles(id)),
+        url: (id) => c.get(ctx.url(id)),
+        setUrl: (id, url) => c.post(ctx.url(id), { url })
     };
 }

@@ -126,6 +126,8 @@ export interface ContextsApi {
     insertDocuments(id: string, body: unknown): Promise<any>;
     uploadBlob(id: string, data: unknown): Promise<any>;
     dotfiles(id: string): Promise<any>;
+    url(id: string): Promise<any>;
+    setUrl(id: string, url: string): Promise<any>;
 }
 
 export interface AgentsApi {
