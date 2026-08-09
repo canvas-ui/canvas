@@ -11,7 +11,18 @@ import { routes } from '@augmentd-labs/canvas-protocol';
 test('auth routes', () => {
     assert.equal(routes.auth.login(), '/auth/login');
     assert.equal(routes.auth.token('tok_1'), '/auth/tokens/tok_1');
+    assert.equal(routes.auth.tokenRefresh(), '/auth/token/refresh');
     assert.equal(routes.auth.deviceRegister(), '/auth/devices/register');
+});
+
+test('extension-consumer routes: raw-id interpolation, pre-encode when needed', () => {
+    assert.equal(routes.workspaces.documentsRemove('ws1'), '/workspaces/ws1/documents/remove');
+    assert.equal(routes.workspaces.treeByName('ws1', 'context'), '/workspaces/ws1/trees/context');
+    // callers that historically encoded ids keep doing so before the builder
+    assert.equal(routes.workspaces.treeByName(encodeURIComponent('my ws'), 'context'), '/workspaces/my%20ws/trees/context');
+    assert.equal(routes.contexts.treePaths('c1'), '/contexts/c1/tree/paths');
+    assert.equal(routes.contexts.document('c1', 42), '/contexts/c1/documents/42');
+    assert.equal(routes.contexts.documentsRemove('c1'), '/contexts/c1/documents/remove');
 });
 
 test('workspace collection/lifecycle routes', () => {

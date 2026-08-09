@@ -71,6 +71,33 @@ test('removeTreePath end-to-end: encoded treeName, raw path, recursive=false on 
     }
 });
 
+test('unwrap:false returns whole success envelopes, still throws on error envelopes', async () => {
+    let n = 0;
+    const srv = await startServer((req, res) => {
+        if (n++ === 0) {
+            sendEnvelope(res, { payload: [1, 2], count: 2, message: 'listed' });
+        } else {
+            sendEnvelope(res, { status: 'error', statusCode: 409, message: 'nope', code: 'WORKSPACE_NOT_ACTIVE' });
+        }
+    });
+    try {
+        const api = new CanvasApiClient({ baseUrl: srv.baseUrl, token: 't', unwrap: false });
+        const envelope = await api.get('/workspaces');
+        assert.equal(envelope.status, 'success');
+        assert.deepEqual(envelope.payload, [1, 2]);
+        assert.equal(envelope.count, 2);
+        assert.equal(envelope.message, 'listed');
+        const err = await api.get('/workspaces/w1').then(
+            () => assert.fail('should throw'),
+            (e) => e
+        );
+        assert.equal(err.code, 'WORKSPACE_NOT_ACTIVE');
+        assert.equal(err.statusCode, 409);
+    } finally {
+        await srv.close();
+    }
+});
+
 test('contexts.setUrl posts {url} to /contexts/:id/url', async () => {
     const srv = await startServer((req, res) => sendEnvelope(res, { payload: { url: 'ctx://x' } }));
     try {

@@ -26,6 +26,9 @@ export declare const HEADER_APP_NAME: 'X-App-Name';
 export declare const API_TOKEN_PREFIX: 'canvas-';
 export declare function bearerHeader(token: string): { Authorization: string };
 
+export declare function decodeJwtPayload(token: string | null | undefined): Record<string, unknown> | null;
+export declare function getJwtExpiryMs(token: string | null | undefined): number | null;
+
 export declare namespace routes {
     const auth: {
         login(): string;
@@ -34,6 +37,7 @@ export declare namespace routes {
         status(): string;
         tokens(): string;
         token(id: string): string;
+        tokenRefresh(): string;
         devices(): string;
         device(id: string): string;
         deviceRegister(): string;
@@ -49,6 +53,8 @@ export declare namespace routes {
         trees(id: string): string;
         treePath(id: string, treeName: string, path: string): string;
         documents(id: string): string;
+        documentsRemove(id: string): string;
+        treeByName(id: string, treeNameOrId: string): string;
         blobs(id: string): string;
         dotfiles(id: string): string;
         dotfilesStatus(id: string): string;
@@ -69,7 +75,10 @@ export declare namespace routes {
         collection(): string;
         byId(id: string): string;
         tree(id: string): string;
+        treePaths(id: string): string;
         documents(id: string): string;
+        document(id: string, docId: string | number): string;
+        documentsRemove(id: string): string;
         blobs(id: string): string;
         dotfiles(id: string): string;
         url(id: string): string;

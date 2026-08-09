@@ -43,6 +43,13 @@ export interface CanvasApiClientOptions {
     userAgent?: string;
     appName?: string;
     headers?: Record<string, string>;
+    /**
+     * Default true. When false, SUCCESS envelopes are returned whole
+     * ({status, payload, count, ...}) instead of unwrapped to their payload —
+     * for consumers mid-migration whose call sites still dig `.payload` out
+     * themselves. Error envelopes throw either way.
+     */
+    unwrap?: boolean;
     fetch?: typeof fetch;
 }
 

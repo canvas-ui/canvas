@@ -1,6 +1,6 @@
 'use strict';
 
-import { API_BASE, DEFAULT_TIMEOUT_MS, HEADER_APP_NAME, isEnvelope, routes } from '@augmentd-labs/canvas-protocol';
+import { API_BASE, DEFAULT_TIMEOUT_MS, HEADER_APP_NAME, STATUS_ERROR, isEnvelope, routes } from '@augmentd-labs/canvas-protocol';
 import { CanvasError } from './errors.js';
 import { unwrap } from './unwrap.js';
 import { toFetchBody } from './body.js';
@@ -57,6 +57,11 @@ export class CanvasApiClient {
      * @param {string} [options.userAgent] sent only when provided (browsers forbid it)
      * @param {string} [options.appName] sent as X-App-Name when provided
      * @param {Object} [options.headers] extra default headers
+     * @param {boolean} [options.unwrap] default true. When false, SUCCESS
+     *   envelopes are returned whole ({status, payload, count, ...}) instead
+     *   of unwrapped to their payload — for consumers mid-migration whose
+     *   call sites still dig `.payload` out themselves. Error envelopes
+     *   throw either way.
      * @param {typeof fetch} [options.fetch] injectable for tests
      */
     constructor({
@@ -68,6 +73,7 @@ export class CanvasApiClient {
         userAgent,
         appName,
         headers = {},
+        unwrap: unwrapEnvelopes = true,
         fetch: fetchImpl
     } = {}) {
         if (!baseUrl) throw new CanvasError('baseUrl is required');
@@ -78,6 +84,7 @@ export class CanvasApiClient {
         this.userAgent = userAgent;
         this.appName = appName;
         this.defaultHeaders = headers;
+        this.unwrapEnvelopes = unwrapEnvelopes;
         this._fetch = fetchImpl || ((...args) => globalThis.fetch(...args));
 
         this.auth = makeAuthApi(this);
@@ -146,8 +153,12 @@ export class CanvasApiClient {
         const parsed = await this._parseBody(res);
         // Envelopes are authoritative regardless of HTTP status — error
         // envelopes carry the real code/message even on HTTP 200, and
-        // unwrap() throws for those.
-        if (isEnvelope(parsed)) return unwrap(parsed);
+        // unwrap() throws for those. Success envelopes come back whole when
+        // the client was built with unwrap: false.
+        if (isEnvelope(parsed)) {
+            if (parsed.status === STATUS_ERROR) return unwrap(parsed);
+            return this.unwrapEnvelopes ? unwrap(parsed) : parsed;
+        }
         if (res.ok) return parsed;
         const message =
             (parsed && typeof parsed === 'object' && parsed.message) ||

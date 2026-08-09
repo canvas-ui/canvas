@@ -23,6 +23,7 @@ export const auth = {
     status: () => '/auth/status',
     tokens: () => '/auth/tokens',
     token: (id) => `/auth/tokens/${id}`,
+    tokenRefresh: () => '/auth/token/refresh',
     devices: () => '/auth/devices',
     device: (id) => `/auth/devices/${id}`,
     deviceRegister: () => '/auth/devices/register'
@@ -39,6 +40,10 @@ export const workspaces = {
     trees: (id) => `/workspaces/${id}/trees`,
     treePath: (id, treeName, path) => `/workspaces/${id}/trees/${encodeURIComponent(treeName)}/path${treePathSegment(path)}`,
     documents: (id) => `/workspaces/${id}/documents`,
+    /** Soft-remove (documents stay in the DB, drop from the context). */
+    documentsRemove: (id) => `/workspaces/${id}/documents/remove`,
+    /** GET one tree by name/id. Ids interpolate raw — pre-encode if needed. */
+    treeByName: (id, treeNameOrId) => `/workspaces/${id}/trees/${treeNameOrId}`,
     blobs: (id) => `/workspaces/${id}/blobs`,
     dotfiles: (id) => `/workspaces/${id}/dotfiles`,
     dotfilesStatus: (id) => `/workspaces/${id}/dotfiles/status`,
@@ -60,7 +65,11 @@ export const contexts = {
     collection: () => '/contexts',
     byId: (id) => `/contexts/${id}`,
     tree: (id) => `/contexts/${id}/tree`,
+    treePaths: (id) => `/contexts/${id}/tree/paths`,
     documents: (id) => `/contexts/${id}/documents`,
+    document: (id, docId) => `/contexts/${id}/documents/${docId}`,
+    /** Soft-remove (documents stay in the DB, drop from the context). */
+    documentsRemove: (id) => `/contexts/${id}/documents/remove`,
     blobs: (id) => `/contexts/${id}/blobs`,
     dotfiles: (id) => `/contexts/${id}/dotfiles`,
     url: (id) => `/contexts/${id}/url`
