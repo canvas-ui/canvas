@@ -1,7 +1,16 @@
 'use strict';
 
-import { basename } from 'node:path';
 import { SCHEMA_FILE, FILE_SCHEMA_VERSION } from '../ids.js';
+
+// Local basename so this module stays importable from browser bundles
+// (esbuild/vite with platform=browser reject node:path; the package root
+// re-exports this builder). Handles / and \ separators and trailing slashes,
+// matching node's path.basename for the inputs the builders see.
+function basename(p) {
+    const s = String(p).replace(/[\\/]+$/, '');
+    const parts = s.split(/[\\/]/);
+    return parts[parts.length - 1] || '';
+}
 
 /**
  * Build a File document for in-place indexing (the cli `add`/ingest flow):

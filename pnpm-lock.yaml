@@ -29,6 +29,12 @@ importers:
 
   apps/browser-extension:
     dependencies:
+      '@augmentd-labs/canvas-api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@augmentd-labs/canvas-protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       iconify-icon:
         specifier: ^3.0.2
         version: 3.0.2
