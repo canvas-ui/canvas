@@ -1,0 +1,25 @@
+/**
+ * Canvas Extension — popup and side panel.
+ *
+ * This file is an import manifest, not a stylesheet. esbuild flattens it into
+ * a single build/popup/popup.css (see the cssBuildConfig pass in build.mjs),
+ * so nothing @imports at runtime.
+ *
+ * The same page serves the toolbar popup and the side panel / sidebar; which
+ * one it is arrives as `?host=panel` and is stamped onto `html[data-host]`
+ * before first paint by ../theme/theme-init.js. See ./base.css for the sizing.
+ *
+ * Order between these files is not load-bearing — custom properties resolve at
+ * computed-value time, so a rule may read a token declared below it. Order
+ * *inside* theme.css is a different matter; see its header.
+ */
+
+@import '../theme/theme.css';
+
+@import './base.css';       /* reset, host sizing, sliding view container */
+@import './header.css';     /* connection state, context breadcrumb, header buttons */
+@import './tabs.css';       /* search bar, tab navigation, main column */
+@import './list.css';       /* window groups, tab rows, action buttons */
+@import './tree.css';       /* tree view and the Sync To slide-over */
+@import './selection.css';  /* workspace / context picker */
+@import './toast.css';

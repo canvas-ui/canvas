@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas Extension</title>
+  <!-- Stamps the stored theme onto <html> before first paint. Must stay a
+       classic (non-module) script above the stylesheet, or the popup flashes
+       the default theme every time it opens — which, for a surface you open
+       dozens of times a day, is the whole ballgame. See src/theme/theme-init.js. -->
+  <script src="../theme/theme-init.js"></script>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- View Container with sliding views -->
+  <div class="view-container" id="viewContainer">
+
+    <!-- Main View (Tab Management) -->
+    <div class="view" id="mainView" data-view="main">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <div class="logo-wrap">
+            <img src="../../assets/icons/logo-wr_64x64.png" alt="Canvas" class="logo" id="logoBtn">
+            <span class="disconnected-badge" aria-hidden="true">!</span>
+          </div>
+          <div class="connection-info">
+            <div class="connection-status">
+              <span class="status-dot" id="connectionStatus"></span>
+              <span class="status-text" id="connectionText">Disconnected</span>
+            </div>
+            <div class="context-info" id="contextInfo">
+              <span class="context-id" id="contextId">-</span>
+              <div class="context-url-container">
+                <span class="context-url" id="contextUrl">No context</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="header-right">
+          <button class="selector-btn" id="selectorBtn" title="Switch Workspace/Context">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </button>
+          <button class="settings-btn" id="dockBtn" title="Open in sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="15" y1="3" x2="15" y2="21"/>
+            </svg>
+          </button>
+          <!-- Light/dark toggle. A convenience only — the full theme, scheme and
+               density controls live in Settings › Appearance. Both icons ship and
+               popup.js shows whichever one represents the scheme you'd switch to. -->
+          <button class="settings-btn" id="schemeBtn" title="Toggle light/dark">
+            <svg class="scheme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <svg class="scheme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
+          </button>
+          <button class="settings-btn" id="settingsBtn" title="Settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+          <button class="add-page-btn" id="addPageBtn" title="Send current page to Canvas">
+            <svg class="add-page-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span class="add-page-label">Sync</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Global Search -->
+      <div class="search-section">
+        <input type="text" id="searchInput" placeholder="Search tabs..." class="search-input">
+      </div>
+
+      <!-- Tab Navigation -->
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="browser-to-canvas" id="browserToCanvasTab">
+          Browser → Canvas
+        </button>
+        <button class="tab-btn" data-tab="canvas-to-browser" id="canvasToBrowserTab">
+          Canvas → Browser
+        </button>
+      </nav>
+
+      <!-- Main Content -->
+      <main class="main">
+        <!-- Browser to Canvas Tab -->
+        <div class="tab-content active" id="browser-to-canvas">
+          <!-- Sync Settings for Browser to Canvas -->
+          <div class="sync-settings">
+            <label class="checkbox-label">
+              <input type="checkbox" id="sendNewTabsToCanvas"> Send newly opened tabs to Canvas Server
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showSyncedTabs"> Show already synced tabs
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showHiddenTabs"> Show hidden/stashed tabs
+            </label>
+          </div>
+
+          <div class="tab-section">
+            <div class="section-header">
+              <div class="section-header-left">
+                <label class="checkbox-label select-all-label">
+                  <input type="checkbox" id="selectAllBrowser">
+                  <span class="checkmark"></span>
+                </label>
+                <h3 id="browserTabsHeader">Unsynced Browser Tabs</h3>
+              </div>
+              <div class="section-actions">
+                <button class="action-btn icon-btn secondary" id="syncAllBtn" title="Sync all to current path">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><polyline points="8 17 12 13 16 17"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                </button>
+                <button class="action-btn icon-btn primary" id="syncToAllBtn" title="Sync all to specific paths...">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="10" x2="12" y2="15"/><polyline points="9 13 12 16 15 13"/></svg>
+                </button>
+                <button class="action-btn icon-btn danger" id="closeAllBtn" title="Close all">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="tab-list" id="browserToCanvasList">
+              <div class="empty-state">No unsynced tabs</div>
+            </div>
+            <div class="bulk-actions" id="browserBulkActions" style="display: none;">
+              <button class="action-btn icon-btn secondary" id="syncSelectedBtn" title="Sync selected">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><polyline points="8 17 12 13 16 17"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+              </button>
+              <button class="action-btn icon-btn primary" id="syncToSelectedBtn" title="Sync selected to specific paths...">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="10" x2="12" y2="15"/><polyline points="9 13 12 16 15 13"/></svg>
+              </button>
+              <button class="action-btn icon-btn warning" id="syncCloseSelectedBtn" title="Sync and close selected">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
+              <button class="action-btn icon-btn danger" id="closeSelectedBtn" title="Close selected">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas to Browser Tab -->
+        <div class="tab-content" id="canvas-to-browser">
+          <!-- Sync Settings for Canvas to Browser -->
+          <div class="sync-settings">
+            <label class="checkbox-label">
+              <input type="checkbox" id="openTabsAddedToCanvas"> Automatically open tabs in browser
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showAllCanvasTabs"> Show all context tabs
+            </label>
+          </div>
+
+          <div class="tab-section">
+            <div class="section-header">
+              <div class="section-header-left">
+                <label class="checkbox-label select-all-label">
+                  <input type="checkbox" id="selectAllCanvas">
+                  <span class="checkmark"></span>
+                </label>
+                <h3 id="canvasTabsHeader">Canvas Context Tabs</h3>
+              </div>
+              <div class="section-actions">
+                <span class="page-indicator" id="canvasPageIndicator"></span>
+                <button class="action-btn icon-btn secondary" id="canvasPrevPageBtn" title="Previous page">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button class="action-btn icon-btn secondary" id="canvasNextPageBtn" title="Next page">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+                <button class="action-btn icon-btn primary" id="openAllBtn" title="Open all fetched tabs in browser">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><polyline points="8 17 12 21 16 17"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="tab-list" id="canvasToBrowserList">
+              <div class="empty-state">No context tabs to open</div>
+            </div>
+            <div class="bulk-actions" id="canvasBulkActions" style="display: none;">
+              <button class="action-btn primary" id="openSelectedBtn">Open Selected</button>
+              <button class="action-btn warning" id="removeSelectedBtn">Remove Selected</button>
+              <button class="action-btn danger" id="deleteSelectedBtn">Delete Selected</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Tree View (Path Selection) -->
+    <div class="view" id="treeView" data-view="tree">
+      <!-- Tree Header -->
+      <header class="header tree-header">
+        <div class="header-left">
+          <button class="back-btn" id="treeBackBtn" title="Back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="tree-path-input-container">
+            <input type="text" class="tree-path-input" id="treePathInput" placeholder="Enter path">
+            <button class="path-submit-btn" id="pathSubmitBtn">✓</button>
+            <button class="path-cancel-btn" id="pathCancelBtn">✕</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Tree Content -->
+      <div class="tree-content">
+        <div class="tree-title">
+          <h3 id="treeTitle">Select Path</h3>
+          <p id="treeSubtitle">Choose a folder or enter path manually</p>
+        </div>
+        <div class="tree-search-container">
+          <svg class="tree-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input type="text" class="tree-search-input" id="treeSearchInput" placeholder="Search folders...">
+          <button class="tree-search-clear" id="treeSearchClear" title="Clear search">✕</button>
+        </div>
+        <div class="tree-container" id="treeContainer">
+          <div class="loading-state">Loading tree...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Context/Workspace Selection View -->
+    <div class="view" id="selectionView" data-view="selection">
+      <!-- Selection Header -->
+      <header class="header selection-header">
+        <div class="header-left">
+          <button class="back-btn" id="selectionBackBtn" title="Back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="selection-title">
+            <h3>Switch Sync Mode</h3>
+          </div>
+        </div>
+      </header>
+
+      <!-- Selection Tabs -->
+      <nav class="selection-tab-nav">
+        <button class="selection-tab-btn active" data-selection-tab="contexts" id="contextsSelectionTab">
+          Bind to Context
+        </button>
+        <button class="selection-tab-btn" data-selection-tab="workspaces" id="workspacesSelectionTab">
+          Explorer mode
+        </button>
+      </nav>
+
+      <!-- Selection Content -->
+      <main class="selection-main">
+        <!-- Contexts Tab -->
+        <div class="selection-tab-content active" id="contexts-selection">
+          <div class="selection-list" id="contextsList">
+            <div class="loading-state">Loading contexts...</div>
+          </div>
+        </div>
+
+        <!-- Workspaces Tab -->
+        <div class="selection-tab-content" id="workspaces-selection">
+          <div class="selection-list" id="workspacesList">
+            <div class="loading-state">Loading workspaces...</div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+  </div>
+
+  <!-- Sync To Panel (slide-in overlay) -->
+  <div class="sync-to-overlay" id="syncToOverlay">
+    <div class="sync-to-panel">
+      <div class="sync-to-header">
+        <h3>Sync To</h3>
+        <div class="sync-to-header-actions">
+          <button class="add-page-btn sync-to-current-btn" id="syncToCurrentBtn" title="Insert page into the current path">
+            <svg class="add-page-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          <button class="add-page-btn sync-to-current-close-btn" id="syncToCurrentCloseBtn" title="Insert page into the current path and close the tab">
+            <svg class="add-page-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+          <button class="back-btn" id="syncToPanelClose" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="sync-to-search">
+        <input type="text" id="syncToSearchInput" placeholder="Search paths..." class="search-input">
+        <button class="tree-search-clear" id="syncToSearchClear" title="Clear search" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sync-to-pinned" id="syncToPinned" style="display: none;"></div>
+      <div class="sync-to-tree" id="syncToTree">
+        <div class="loading-state">Loading tree...</div>
+      </div>
+      <div class="sync-to-footer">
+        <span class="sync-to-count" id="syncToCount">0 paths selected</span>
+        <div class="sync-to-footer-actions">
+          <button class="action-btn primary" id="syncToConfirmBtn" disabled>Sync</button>
+          <button class="action-btn warning" id="syncToConfirmCloseBtn" disabled>Sync &amp; Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" style="display: none;"></div>
+
+  <!-- Context Menu removed - popup boundaries prevent proper floating menus -->
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

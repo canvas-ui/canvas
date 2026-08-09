@@ -1,0 +1,21 @@
+/**
+ * Canvas Extension — settings page.
+ *
+ * This file is an import manifest, not a stylesheet. esbuild flattens it into
+ * a single build/settings/settings.css (see the cssBuildConfig pass in
+ * build.mjs), so nothing @imports at runtime.
+ *
+ * The theme layer comes first for readability — tokens, then the things built
+ * out of them. Order between these files is not otherwise load-bearing:
+ * custom properties resolve at computed-value time, so a rule may read a token
+ * declared below it. Order *inside* theme.css is a different matter; see its
+ * header.
+ */
+
+@import '../theme/theme.css';
+
+@import './base.css';        /* reset, page frame, sticky header, tab bar */
+@import './cards.css';       /* cards, notices, status and debug panels */
+@import './forms.css';       /* inputs, segmented control, switches, buttons */
+@import './appearance.css';  /* the Appearance tab's theme / scheme / density UI */
+@import './toast.css';

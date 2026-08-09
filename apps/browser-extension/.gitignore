@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build outputs (generated)
+build/
+packages/
+*.zip
+
+# Logs
+*.log
+
+# IDE / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local env/config
+.env
+.env.*
+
+# Keep placeholder files
+!**/.keep
