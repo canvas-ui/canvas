@@ -194,6 +194,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@augmentd-labs/canvas-api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@augmentd-labs/canvas-protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@codemirror/lang-javascript':
         specifier: ^6.2.5
         version: 6.2.5
