@@ -1,0 +1,141 @@
+name: release
+
+# Tag-per-app releases (decided in the migration plan): pushing cli-vX.Y.Z /
+# web-vX.Y.Z / desktop-vX.Y.Z builds that app and attaches its artifacts to
+# the GitHub Release for the tag. canvas-fuse releases from its own repo the
+# same way (v* tags there). Each job asserts the tag version matches the
+# app's manifest so a stray tag can't publish mislabeled artifacts.
+#
+# canvas-server consumes web via the versioned tarball URL — after a web
+# release, bump the URL in canvas-server/package.json.
+
+on:
+  push:
+    tags:
+      - 'cli-v*'
+      - 'web-v*'
+      - 'desktop-v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  web:
+    if: startsWith(github.ref_name, 'web-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert tag matches apps/web version
+        run: |
+          v="${GITHUB_REF_NAME#web-v}"
+          m=$(node -p "require('./apps/web/package.json').version")
+          [ "$v" = "$m" ] || { echo "tag $v != manifest $m"; exit 1; }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter canvas-web run build
+      - run: node scripts/pack-web-artifact.mjs artifacts
+      - name: Checksums
+        run: cd artifacts && sha256sum *.tgz > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: canvas-web ${{ github.ref_name }} (prebuilt dist)
+          body: >
+            Prebuilt web UI artifact for canvas-server. Dependency-free
+            tarball (package.json + dist/); consume as an npm tarball-URL
+            dependency and pin the exact URL.
+          files: |
+            artifacts/*.tgz
+            artifacts/SHA256SUMS
+
+  cli:
+    if: startsWith(github.ref_name, 'cli-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert tag matches apps/cli version
+        run: |
+          v="${GITHUB_REF_NAME#cli-v}"
+          m=$(node -p "require('./apps/cli/package.json').version")
+          [ "$v" = "$m" ] || { echo "tag $v != manifest $m"; exit 1; }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+      - run: pnpm install --frozen-lockfile
+      # bun cross-compiles all targets from one Linux runner.
+      - name: Build binaries
+        run: |
+          pnpm --filter canvas-cli run build:linux
+          pnpm --filter canvas-cli run build:linux-arm
+          pnpm --filter canvas-cli run build:macos
+          pnpm --filter canvas-cli run build:macos-arm
+          pnpm --filter canvas-cli run build:windows
+      - name: Checksums
+        run: cd apps/cli/dist && sha256sum canvas-* > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: canvas-cli ${{ github.ref_name }}
+          body: >
+            Single-file canvas CLI binaries (bun-compiled) for Linux
+            x64/arm64, macOS x64/arm64 and Windows x64.
+          files: |
+            apps/cli/dist/canvas-linux
+            apps/cli/dist/canvas-linux-arm
+            apps/cli/dist/canvas-macos
+            apps/cli/dist/canvas-macos-arm
+            apps/cli/dist/canvas-windows.exe
+            apps/cli/dist/SHA256SUMS
+
+  desktop:
+    if: startsWith(github.ref_name, 'desktop-v')
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert tag matches tauri.conf version
+        shell: bash
+        run: |
+          v="${GITHUB_REF_NAME#desktop-v}"
+          m=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          [ "$v" = "$m" ] || { echo "tag $v != manifest $m"; exit 1; }
+      - name: Linux system deps (Tauri v2)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl \
+            wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: pnpm install --frozen-lockfile
+      # Builds the frontend (beforeBuildCommand), the Rust bundle, and
+      # attaches installers to the release for this tag. Unsigned bundles —
+      # code signing is a later, cert-holding-human task.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: Canvas Desktop ${{ github.ref_name }}
+          releaseDraft: false
+          prerelease: false
