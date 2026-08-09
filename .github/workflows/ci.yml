@@ -27,3 +27,4 @@ jobs:
       # and is not part of this pipeline yet.
       - run: pnpm --filter canvas-desktop run build
       - run: pnpm --filter canvas-browser-extension run build
+      - run: pnpm --filter canvas-web run build
