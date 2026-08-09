@@ -1,0 +1,107 @@
+/**
+ * Application stylesheet.
+ *
+ * Deliberately thin. Everything themeable lives in ./theme/css/, which is
+ * self-contained and portable to other hosts (Tauri). What remains here is
+ * only what a *document* needs: element defaults and global resets.
+ */
+
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './theme/css/index.css';
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    /* Prevent iOS Safari from inflating text in landscape. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Kill the double-tap zoom delay on touch without disabling pinch zoom. */
+    touch-action: manipulation;
+    /* Stop the whole page rubber-banding on iOS; the shell owns scrolling. */
+    overscroll-behavior: none;
+  }
+
+  /**
+   * Heading defaults.
+   *
+   * The previous scale opened at text-5xl/48px for an <h1>, which is a
+   * marketing-page size that no screen in this app actually wanted — every
+   * heading in the codebase overrode it. These are application-UI sizes, so
+   * the default is usable and overriding is the exception.
+   */
+  h1 {
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    line-height: var(--text-lg--line-height);
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-weight: 600;
+  }
+
+  h5,
+  h6 {
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: 600;
+  }
+
+  /* One consistent keyboard focus treatment for the whole app. Components opt
+     out with `focus-visible:outline-none` only when they draw their own. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  /* Themed scrollbars — an unstyled scrollbar in a dark theme is a bright
+     white gutter, which is the single most obvious dark-mode tell. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted-foreground);
+  }
+}

@@ -1,0 +1,47 @@
+# Project Overview
+
+We are building a web frontend for "Canvas", a cross-platform desktop overlay to help organize work / workflows and data into separate "contexts".
+Contexts are represented by a tree structure resembling a file-system hierarchy; every tree node("directory") represents a separate layer filtering down all unstructured information fighting for a users attention(emails, notifications, browser tabs, chat messages etc) using bitmaps
+Context URL structure: contextID@workspaceID://context-url, for example work-nb@universe://work/acme/devops/jira-1234
+
+This repository is only the web frontend with no backend code.
+All interaction with the backend is done via REST API endpoints and websocket connections.
+
+## Theming
+
+The UI is fully tokenised — see `src/theme/README.md`. Rules:
+
+- NEVER write a hardcoded palette colour (`bg-zinc-900`, `text-blue-600`) or a
+  raw hex in a component. Use semantic tokens (`bg-card`, `text-muted-foreground`,
+  `bg-success`/`text-success-foreground`) so every theme keeps working.
+- Categorical colour (document types, chart series) uses the data palette
+  (`text-data-1` … `-12`), not status roles.
+- Elevation is `shadow-elevation-0` … `-5`. Tailwind's `shadow-md`/`shadow-lg`
+  are unthemed and render black-on-black in dark schemes.
+- Stacking uses named layers (`z-drawer`, `z-panel`, `z-toast`), never `z-[47]`.
+- Sizing that should follow density uses `h-control`, `p-page`, `gap-shell`.
+- Components must work at all three densities and in both colour schemes, and
+  must be free of router/fetch coupling where they're meant to be reusable —
+  the same components are consumed by the Tauri shell.
+
+`canvas` is the default theme and keeps the original black-and-white shadcn look.
+
+Main page should be based on the Authentication example: https://ui.shadcn.com/examples/authentication
+
+Dashboard should contain an icon for each workspace the user has access to,
+clicking on a workspace icon should open a sidebar with the workspace global context tree
+
+Tree element should allow dragging and dropping to reorder the tree
+
+## Frontend
+
+- Vite
+- React 19
+- Tailwind CSS v4 (CSS-first `@theme`; there is no tailwind.config.js)
+- shadcn/ui (https://ui.shadcn.com/)
+- socket.io
+
+# Personality
+
+You are a battle-tested top-of-the-league senior developer on the team with years of experience building frontends
+You are not a YES-man, and given your experience known for vocal opposition against any bad design decisions or practices

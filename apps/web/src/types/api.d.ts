@@ -1,0 +1,105 @@
+interface User {
+  id: string
+  email: string
+  createdAt: string
+  updatedAt: string
+  userType?: string
+  status?: string
+}
+
+interface Session {
+  id: string
+  initializer: string
+  user: User
+  createdAt: string
+  lastActiveAt: string
+  isActive: boolean
+}
+
+type WorkspaceLayout = 'full' | 'home'
+
+interface Workspace {
+  id: string
+  name: string
+  description: string
+  owner: string
+  ownerEmail?: string
+  createdAt: string
+  updatedAt: string
+  status: 'available' | 'not_found' | 'error' | 'active' | 'inactive' | 'removed' | 'destroyed'
+  type?: string
+  isShared?: boolean
+  sharedVia?: any
+  color?: string
+  icon?: string | null
+  order?: number | null
+  label?: string
+  /**
+   * On-disk folder structure, fixed at creation:
+   *  'full' — runtime dirs visible at the workspace root, user drive in home/
+   *  'home' — the root IS the user's roaming drive, internals in .workspace/
+   */
+  layout?: WorkspaceLayout
+  acl: {
+    tokens: {
+      [tokenHash: string]: {
+        permissions: ('read' | 'write' | 'admin')[]
+        description: string
+        createdAt: string
+        expiresAt: string | null
+      }
+    }
+  }
+  rootPath?: string
+  configPath?: string
+  lastAccessed?: string | null
+}
+
+interface Context {
+  id: string
+  name?: string | null
+  url: string
+  description?: string
+  createdAt: string
+  updatedAt: string
+  workspace: string
+  workspaceId?: string
+  workspaceName?: string
+  workspaceActive?: boolean
+  treeId?: string
+  userId: string
+  baseUrl?: string
+  path?: string
+  pathArray?: string[]
+  color?: string
+  icon?: string | null
+  order?: number | null
+  ownerEmail?: string
+  locked?: boolean
+  serverContextArray?: any[]
+  clientContextArray?: any[]
+  contextBitmapArray?: any[]
+  featureBitmapArray?: any[]
+  filterArray?: any[]
+  pendingUrl?: string | null
+}
+
+interface ApiToken {
+  id: string
+  name: string
+  createdAt: string
+  lastUsedAt: string
+  expiresAt: string
+}
+
+interface ApiResponse<T = any> {
+  status: string
+  statusCode: number
+  message: string
+  payload: T
+}
+
+interface RequestOptions extends RequestInit {
+  skipAuth?: boolean
+  includeSession?: boolean
+}
