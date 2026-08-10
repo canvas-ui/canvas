@@ -75,9 +75,6 @@ Current embedding behavior and service boundaries are documented in
 
 ## Integration leftovers
 
-- [ ] Finish the persisted wire rename from `embedd` to `inferd`: workspace
-      config, environment variables, config filename, cache path, and old route
-      aliases.
 - [ ] Add `ids` filtering to context document routes.
 - [ ] Extend session-driven lists to layer and unfiled views where useful.
 - [ ] Add reconnect/resume only together with a bounded grace TTL.
