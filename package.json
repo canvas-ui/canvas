@@ -15,7 +15,8 @@
     "release:web": "bash scripts/update-releases.sh web",
     "release:extension": "bash scripts/update-releases.sh extension",
     "release:cli": "bash scripts/update-releases.sh cli",
-    "release:desktop": "bash scripts/update-releases.sh desktop"
+    "release:desktop": "bash scripts/update-releases.sh desktop",
+    "release:all": "bash scripts/update-releases.sh all"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

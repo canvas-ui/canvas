@@ -5,6 +5,8 @@
 #   npm run release:extension                 build + GitHub release with both zips
 #   npm run release:cli                       tag cli-v<ver> → CI builds + publishes
 #   npm run release:desktop                   tag desktop-v<ver> → CI builds (multi-OS)
+#   npm run release:all                       all of the above; already-released
+#                                             versions are skipped, web always republishes
 #
 #   any of the above -- --bump patch|minor|major   bump the app version first (committed)
 #   web only        -- --tag                       ALSO tag web-v<ver> (pinned tarball via CI)
@@ -38,16 +40,34 @@ BUMP=""
 TAG=false
 PUSH=true
 ALLOW_DIRTY=false
+SKIP_EXISTING=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --bump) BUMP="${2:-}"; shift 2 ;;
         --tag) TAG=true; shift ;;
         --no-push) PUSH=false; shift ;;
         --allow-dirty) ALLOW_DIRTY=true; shift ;;
+        --skip-existing) SKIP_EXISTING=true; shift ;;
         -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) die "unknown argument '$1' (see --help)" ;;
     esac
 done
+
+# ── `all`: every app in sequence ─────────────────────────────────────────────
+# web republishes unconditionally (the branch is idempotent); tagged apps skip
+# when their current version is already released — so `release:all` after a
+# few webui commits updates the web and touches nothing else.
+if [[ "$APP" == "all" ]]; then
+    rc=0
+    for app in web extension cli desktop; do
+        say "── $app ─────────────────────────────"
+        bash "$0" "$app" --skip-existing \
+            $($PUSH || echo --no-push) $($ALLOW_DIRTY && echo --allow-dirty) \
+            ${BUMP:+--bump "$BUMP"} || rc=1
+    done
+    [[ $rc -eq 0 ]] && say "release:all complete" || die "release:all finished with failures (see above)"
+    exit $rc
+fi
 
 # ── App recipes ──────────────────────────────────────────────────────────────
 case "$APP" in
@@ -111,7 +131,10 @@ push_main_if_needed() {
 
 # ── Mode: ci-tag (cli, desktop) — CI builds, we only tag ─────────────────────
 if [[ "$MODE" == "ci-tag" ]]; then
-    git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists — bump first (--bump patch)"
+    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+        $SKIP_EXISTING && { say "$APP $ver already released ($tag exists) — skipping"; exit 0; }
+        die "tag $tag already exists — bump first (--bump patch)"
+    fi
     if ! $PUSH; then
         say "--no-push: would push main (if needed) and tag $tag; CI (release.yml) builds from the tag"
         exit 0
@@ -125,7 +148,10 @@ fi
 
 # ── Mode: gh-release (extension) — build locally, attach zips ────────────────
 if [[ "$MODE" == "gh-release" ]]; then
-    git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists — bump first (--bump patch)"
+    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+        $SKIP_EXISTING && { say "$APP $ver already released ($tag exists) — skipping"; exit 0; }
+        die "tag $tag already exists — bump first (--bump patch)"
+    fi
     say "Installing (filtered, frozen lockfile)..."
     corepack pnpm install --filter canvas-browser-extension... --frozen-lockfile >/dev/null || die "pnpm install failed"
     say "Building extension $ver..."
