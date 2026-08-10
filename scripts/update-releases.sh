@@ -1,33 +1,43 @@
 #!/usr/bin/env bash
-# update-releases.sh — the ONE command that publishes the web UI.
+# update-releases.sh — ONE command to release any app in this monorepo.
 #
-#   npm run release:web                  build + publish web-dist branch
-#   npm run release:web -- --bump patch  bump apps/web version first (commit + push main)
-#   npm run release:web -- --tag         also tag web-v<version> (triggers the
-#                                        release.yml tarball build on GitHub)
-#   npm run release:web -- --no-push     do everything locally, print the push
-#                                        commands instead of running them
+#   npm run release:web                       build + publish the web-dist branch
+#   npm run release:extension                 build + GitHub release with both zips
+#   npm run release:cli                       tag cli-v<ver> → CI builds + publishes
+#   npm run release:desktop                   tag desktop-v<ver> → CI builds (multi-OS)
 #
-# What it does, in order, verifying every step:
-#   1. Preconditions: on main, clean tree, level with origin/main, pnpm works.
-#   2. Optional --bump: patch/minor/major on apps/web/package.json, committed.
-#   3. Build apps/web (frozen lockfile, filtered install).
-#   4. Publish { package.json, dist/ } as a single commit on the `web-dist`
-#      branch (force-push — the branch is a build artifact, not history).
-#      canvas-server consumes it as "canvas-web": "github:canvas-ui/canvas#web-dist"
-#      and re-resolves it on every deployment update.
-#   5. Optional --tag: web-v<version> tag for the pinned tarball release.
+#   any of the above -- --bump patch|minor|major   bump the app version first (committed)
+#   web only        -- --tag                       ALSO tag web-v<ver> (pinned tarball via CI)
+#   any             -- --no-push                   stop before pushing, print what would run
+#   any             -- --allow-dirty               skip the clean-tree check (hacking only)
+#
+# Per-app release modes (why they differ):
+#   web        local build → force-push { package.json, dist/ } to the `web-dist`
+#              branch. canvas-server consumes it as
+#              "canvas-web": "github:canvas-ui/canvas#web-dist" and re-resolves
+#              on every deployment update — a push here updates every instance.
+#   extension  local build → packages/canvas-extension-{chromium,firefox}.zip →
+#              `gh release create extension-v<ver>` with both zips attached.
+#   cli        tag cli-v<ver> + push — release.yml builds and publishes.
+#   desktop    tag desktop-v<ver> + push — release.yml builds (needs CI's
+#              multi-OS runners; deliberately NOT built locally).
 #
 # Design constraints: non-interactive, deterministic, one loud line per step,
 # every failure names its cause and exits non-zero — safe to hand to a cron
 # job or a small supervising model.
 set -euo pipefail
 
+say() { echo "[release $(date '+%H:%M:%S')] $1"; }
+die() { echo "[release] ERROR: $1" >&2; exit 1; }
+
+APP="${1:-}"
+[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: web | extension | cli | desktop (see --help)"
+shift
+
 BUMP=""
 TAG=false
 PUSH=true
 ALLOW_DIRTY=false
-
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --bump) BUMP="${2:-}"; shift 2 ;;
@@ -35,18 +45,24 @@ while [[ $# -gt 0 ]]; do
         --no-push) PUSH=false; shift ;;
         --allow-dirty) ALLOW_DIRTY=true; shift ;;
         -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *) echo "ERROR: unknown argument '$1' (see --help)"; exit 2 ;;
+        *) die "unknown argument '$1' (see --help)" ;;
     esac
 done
 
-say()  { echo "[release:web $(date '+%H:%M:%S')] $1"; }
-die()  { echo "[release:web] ERROR: $1" >&2; exit 1; }
+# ── App recipes ──────────────────────────────────────────────────────────────
+case "$APP" in
+    web)       APP_DIR="apps/web";               MODE="branch"; TAG_PREFIX="web-v" ;;
+    extension) APP_DIR="apps/browser-extension"; MODE="gh-release"; TAG_PREFIX="extension-v" ;;
+    cli)       APP_DIR="apps/cli";               MODE="ci-tag"; TAG_PREFIX="cli-v" ;;
+    desktop)   APP_DIR="apps/desktop";           MODE="ci-tag"; TAG_PREFIX="desktop-v" ;;
+    *) die "unknown app '$APP' — valid: web, extension, cli, desktop" ;;
+esac
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git repository"
 cd "$ROOT"
-[[ -f apps/web/package.json ]] || die "apps/web/package.json not found — run from the canvas monorepo"
+[[ -f "$APP_DIR/package.json" ]] || die "$APP_DIR/package.json not found — run from the canvas monorepo"
 
-# ── 1. Preconditions ─────────────────────────────────────────────────────────
+# ── Preconditions (shared) ───────────────────────────────────────────────────
 branch=$(git branch --show-current)
 [[ "$branch" == "main" ]] || die "on branch '$branch' — releases publish from main only"
 
@@ -68,33 +84,83 @@ fi
 
 command -v corepack >/dev/null || die "corepack not found (ships with node >= 16.9)"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-
-# ── 2. Optional version bump ─────────────────────────────────────────────────
-if [[ -n "$BUMP" ]]; then
-    case "$BUMP" in patch|minor|major) ;; *) die "--bump must be patch, minor or major (got '$BUMP')" ;; esac
-    ( cd apps/web && npm version "$BUMP" --no-git-tag-version >/dev/null ) || die "version bump failed"
-    ver=$(node -p "require('./apps/web/package.json').version")
-    git add apps/web/package.json
-    git commit --quiet -m "apps/web $ver" || die "bump commit failed"
-    say "Bumped apps/web to $ver (committed)"
+if [[ "$MODE" == "gh-release" ]]; then
+    command -v gh >/dev/null || die "gh CLI required for extension releases (attaches the zips)"
 fi
 
-ver=$(node -p "require('./apps/web/package.json').version")
-rev=$(git rev-parse --short HEAD)
+# ── Optional version bump ────────────────────────────────────────────────────
+if [[ -n "$BUMP" ]]; then
+    case "$BUMP" in patch|minor|major) ;; *) die "--bump must be patch, minor or major (got '$BUMP')" ;; esac
+    ( cd "$APP_DIR" && npm version "$BUMP" --no-git-tag-version >/dev/null ) || die "version bump failed"
+    ver=$(node -p "require('./$APP_DIR/package.json').version")
+    git add "$APP_DIR/package.json"
+    git commit --quiet -m "$APP_DIR $ver" || die "bump commit failed"
+    say "Bumped $APP_DIR to $ver (committed)"
+fi
 
-# ── 3. Build ─────────────────────────────────────────────────────────────────
+ver=$(node -p "require('./$APP_DIR/package.json').version")
+rev=$(git rev-parse --short HEAD)
+tag="$TAG_PREFIX$ver"
+
+push_main_if_needed() {
+    if [[ -n "$BUMP" ]] || [[ "$local_sha" != "$remote_sha" ]]; then
+        say "Pushing main..."
+        git push origin main || die "push of main failed"
+    fi
+}
+
+# ── Mode: ci-tag (cli, desktop) — CI builds, we only tag ─────────────────────
+if [[ "$MODE" == "ci-tag" ]]; then
+    git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists — bump first (--bump patch)"
+    if ! $PUSH; then
+        say "--no-push: would push main (if needed) and tag $tag; CI (release.yml) builds from the tag"
+        exit 0
+    fi
+    push_main_if_needed
+    git tag "$tag" || die "tagging $tag failed"
+    git push origin "$tag" || die "tag push failed"
+    say "Done: $tag pushed — release.yml is building. Watch: gh run list --workflow=release.yml --limit 1"
+    exit 0
+fi
+
+# ── Mode: gh-release (extension) — build locally, attach zips ────────────────
+if [[ "$MODE" == "gh-release" ]]; then
+    git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists — bump first (--bump patch)"
+    say "Installing (filtered, frozen lockfile)..."
+    corepack pnpm install --filter canvas-browser-extension... --frozen-lockfile >/dev/null || die "pnpm install failed"
+    say "Building extension $ver..."
+    corepack pnpm --filter canvas-browser-extension run build >/dev/null || die "extension build failed"
+    for z in canvas-extension-chromium.zip canvas-extension-firefox.zip; do
+        [[ -f "$APP_DIR/packages/$z" ]] || die "build produced no $z"
+        unzip -tq "$APP_DIR/packages/$z" >/dev/null || die "$z is not a valid zip"
+    done
+    if ! $PUSH; then
+        say "--no-push: would push main (if needed), tag $tag, and: gh release create $tag <zips>"
+        exit 0
+    fi
+    push_main_if_needed
+    git tag "$tag" && git push origin "$tag" || die "tag push failed"
+    gh release create "$tag" \
+        --title "canvas-browser-extension $ver" \
+        --notes "Chromium + Firefox packages, built from main@$rev by scripts/update-releases.sh" \
+        "$APP_DIR/packages/canvas-extension-chromium.zip" \
+        "$APP_DIR/packages/canvas-extension-firefox.zip" || die "gh release create failed"
+    say "Done: $tag released with both zips"
+    exit 0
+fi
+
+# ── Mode: branch (web) — build locally, publish the web-dist branch ──────────
 say "Installing (filtered, frozen lockfile)..."
 corepack pnpm install --filter canvas-web... --frozen-lockfile >/dev/null || die "pnpm install failed"
 say "Building apps/web $ver..."
 corepack pnpm --filter canvas-web run build >/dev/null || die "web build failed"
-[[ -f apps/web/dist/index.html ]] || die "build produced no dist/index.html"
+[[ -f "$APP_DIR/dist/index.html" ]] || die "build produced no dist/index.html"
 
-# ── 4. Publish the web-dist branch ───────────────────────────────────────────
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
-cp -r apps/web/dist "$stage/dist"
+cp -r "$APP_DIR/dist" "$stage/dist"
 node -e "
-const p = require('./apps/web/package.json');
+const p = require('./$APP_DIR/package.json');
 require('fs').writeFileSync(process.argv[1] + '/package.json', JSON.stringify({
   name: 'canvas-web',
   version: p.version,
@@ -115,27 +181,20 @@ origin_url=$(git remote get-url origin)
 ) || die "failed to assemble the web-dist commit"
 dist_sha=$(git -C "$stage" rev-parse HEAD)
 
-# ── 5. Push (or print what would be pushed) ──────────────────────────────────
 if $PUSH; then
-    if [[ -n "$BUMP" ]] || [[ "$local_sha" != "$remote_sha" ]]; then
-        say "Pushing main..."
-        git push origin main || die "push of main failed"
-    fi
+    push_main_if_needed
     say "Force-pushing web-dist ($dist_sha)..."
     git -C "$stage" push --force "$origin_url" web-dist || die "push of web-dist failed"
     pushed=$(git ls-remote "$origin_url" refs/heads/web-dist | cut -f1)
     [[ "$pushed" == "$dist_sha" ]] || die "verification failed: remote web-dist is '$pushed', expected '$dist_sha'"
     say "Verified: origin/web-dist == $dist_sha"
     if $TAG; then
-        git tag "web-v$ver" || die "tag web-v$ver already exists — bump first (--bump patch)"
-        git push origin "web-v$ver" || die "tag push failed"
-        say "Tagged web-v$ver (release.yml builds the pinned tarball)"
+        git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists — bump first (--bump patch)"
+        git tag "$tag" && git push origin "$tag" || die "tag push failed"
+        say "Tagged $tag (release.yml builds the pinned tarball)"
     fi
 else
-    say "--no-push: run these when ready:"
-    echo "    git push origin main"
-    echo "    git -C $stage push --force $origin_url web-dist   # (stage is deleted on exit — re-run without --no-push instead)"
-    $TAG && echo "    git tag web-v$ver && git push origin web-v$ver"
+    say "--no-push: web-dist commit assembled ($dist_sha); re-run without --no-push to publish"
 fi
 
 say "Done: canvas-web $ver (main@$rev) → web-dist. Deployments pick it up on their next update; local canvas-server dev: npm install canvas-web@github:canvas-ui/canvas#web-dist --no-save"

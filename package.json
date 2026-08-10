@@ -12,7 +12,10 @@
     "lint": "eslint . --no-error-on-unmatched-pattern && pnpm -r --if-present --filter '!canvas-web' --filter '!canvas-monorepo' run lint",
     "format": "prettier --write \"packages/**/*.{js,md,json}\"",
     "changeset": "changeset",
-    "release:web": "bash scripts/update-releases.sh"
+    "release:web": "bash scripts/update-releases.sh web",
+    "release:extension": "bash scripts/update-releases.sh extension",
+    "release:cli": "bash scripts/update-releases.sh cli",
+    "release:desktop": "bash scripts/update-releases.sh desktop"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
