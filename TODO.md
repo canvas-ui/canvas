@@ -72,6 +72,65 @@ id-set cue (`rankAndPin`) is a SNAPSHOT — correct for conversational drill-dow
 candidate set stands still, WRONG under a live feed (documents that would match the text in the
 new candidate set stay excluded by the stale pin). Documented on the hook interface.
 
+**Image relevance floor: relative by default (synapsd 3.3.0, 2026-08-10).** `imageFloorMode`
+`relative` (default) keeps hits within `imageRelativeMargin` (0.035) of THIS query's best hit,
+with `imageMaxDistance` retained as a ceiling; `absolute` is the pre-3.3 behaviour. Driven by
+measurement, not theory: on CLIP ViT-B/32 the 200 nearest photos to "winter" spanned ~0.02 in
+cosine distance (typical step Δ0.0001), and a cutoff calibrated for SigLIP (~0.945) sat above
+everything.
+
+Read that continuum correctly (user, from the actual photos): the dataset holds a LOT of winter
+photos, so the smooth tail is CORPUS DENSITY, not the model failing to discriminate. Where a
+query genuinely has hundreds of true matches there is no semantic gap to find, and no floor is
+the right instrument — the visible "gaps" are artifacts of model + query + how we cut the
+results. A floor only earns its keep where matches are sparse and the tail really is noise.
+Caveats recorded with it:
+- an additive margin anchors adaptively but does NOT scale adaptively — it still assumes a
+  distance unit. A genuinely scale-free rule would key off the observed distribution (largest
+  significant gap, or a fraction of the spread). Not built: gap-detection can flicker
+  frame-to-frame in a live feed, which matters for the lens.
+- a tight window is hostile to MULTI-CONCEPT matches, which is the actual use case: a photo of
+  a snowy window sits further from "winter" than a plain snowfield does, so the margin has to
+  span pure→mixed, not just the jitter between near matches. Pinned by
+  `tests/image-floor-mode.test.js` › "the margin governs whether multi-concept photos survive".
+- the debug panel's "biggest gap" marker tends to fire at position 2 when the tail is smooth —
+  it flags the TOP hit being an outlier rather than the match/noise edge. Read it as a hint, not
+  a recommendation.
+- DETAIL IN THE QUERY BEATS TUNING. "nice winter view from a window" outperforms "view" +
+  "window" — expected, since CLIP-family models are trained on captions, so a full descriptive
+  phrase is closer to the training distribution than a bare noun. Practical consequence: spend
+  effort on query composition (and, later, on making those cues explicit per-index) rather than
+  on squeezing a floor. A detailed prompt is already a multi-cue fusion — just done implicitly,
+  inside the model, where we cannot inspect or weight it.
+
+**Direction for the next phase (user, 2026-08-10): multi-index low-dim per modality, not one
+big space.** Project input into small per-modality low-fidelity embeddings, resurface semantic
+anchors as the stream runs, and combine multiple cues with top-down control for ranking. The
+evidence above supports it: one 512-dim space can rank but cannot decide, because every
+threshold question collapses into an isotropic blob. Narrow per-cue indices give decisions that
+CAN be thresholded (and, discretized S2-style, become plain bitmaps — set membership, no
+distances, which is exactly what this engine is fast at). The seams already fit: cue operands
+are bitmaps whose SOURCE is pluggable (see "anchor/quantizer operand sources" below), and
+membership (cues) is already separated from ordering (`match`/`rank`, which takes weighted
+vector legs — that is the "top-down control" hook). What would still need building: weighted /
+soft-overlap cues (option (b) below), since hard-AND cannot express a decayed or partial cue.
+
+And the fusion policy is the hard part, not the projections. The user's framing: inhibitory
+networks are a required design artifact in biological systems for a reason — combining cues
+needs SUPPRESSION and competition, not just weighted addition. Concretely that argues for
+rank-space fusion with normalization (RRF is already this shape) plus explicit inhibitory
+cues — a cue that vetoes or damps others rather than only contributing positively — over
+summing raw per-index scores, which are not comparable across indices anyway (the same
+non-comparability that broke the absolute floor, one level up).
+
+Start from what already exists rather than from theory: inhibition is ALREADY the boring
+bitmap layer. The `noneOf` / `!` sigil (`+bitmapA +bitmapB !bitmapC`) and path exclusion
+(`/foo/bar` minus `!/foo/bar/baz`, `paths.not` in `#resolveParsed`) are lateral inhibition
+that happens to be exact, because bitmap membership is binary. The semantic layer needs the
+same operator over SOFT membership — an inhibitor that damps rather than vetoes, since
+"not quite winter" has no clean complement. That is the same missing piece as weighted cues,
+approached from the other side: build one and you get both.
+
 **Decay: (a) DECIDED 2026-08-10 — inferd owns it, the db stays dumb.** Exponential decay from
 "now" plus preserved anchors is a per-cue WEIGHT model, but `QuerySession`'s combinator is
 hard-AND only (`'and'` is the only accepted value): a cue is in or out, and a decayed cue has no
