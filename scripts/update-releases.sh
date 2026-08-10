@@ -58,11 +58,16 @@ done
 # when their current version is already released — so `release:all` after a
 # few webui commits updates the web and touches nothing else.
 if [[ "$APP" == "all" ]]; then
+    # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
+    # files (theme fallbacks etc.), which must not fail the apps after them.
+    if ! $ALLOW_DIRTY && ! git diff-index --quiet HEAD --; then
+        die "working tree has uncommitted changes — commit them or pass --allow-dirty"
+    fi
     rc=0
     for app in web extension cli desktop; do
         say "── $app ─────────────────────────────"
-        bash "$0" "$app" --skip-existing \
-            $($PUSH || echo --no-push) $($ALLOW_DIRTY && echo --allow-dirty) \
+        bash "$0" "$app" --skip-existing --allow-dirty \
+            $($PUSH || echo --no-push) \
             ${BUMP:+--bump "$BUMP"} || rc=1
     done
     [[ $rc -eq 0 ]] && say "release:all complete" || die "release:all finished with failures (see above)"
@@ -98,6 +103,10 @@ if [[ "$local_sha" != "$remote_sha" ]]; then
     if git merge-base --is-ancestor origin/main main; then
         say "main is ahead of origin/main — its commits will ride along on the push"
     else
+        if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+            say "origin/main moved past this run — superseded by a newer push, exiting cleanly"
+            exit 0
+        fi
         die "main is behind/diverged from origin/main — pull/rebase first"
     fi
 fi
@@ -142,6 +151,13 @@ if [[ "$MODE" == "ci-tag" ]]; then
     push_main_if_needed
     git tag "$tag" || die "tagging $tag failed"
     git push origin "$tag" || die "tag push failed"
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]] && command -v gh >/dev/null; then
+        # A tag pushed with the workflow GITHUB_TOKEN does NOT trigger other
+        # workflows (GitHub's recursion guard) — start release.yml explicitly.
+        gh workflow run release.yml --ref "$tag" \
+            && say "Dispatched release.yml for $tag" \
+            || say "WARN: could not dispatch release.yml for $tag — run it manually"
+    fi
     say "Done: $tag pushed — release.yml is building. Watch: gh run list --workflow=release.yml --limit 1"
     exit 0
 fi
@@ -198,6 +214,10 @@ require('fs').writeFileSync(process.argv[1] + '/package.json', JSON.stringify({
 " "$stage" || die "failed to write the web-dist package.json"
 
 origin_url=$(git remote get-url origin)
+# In CI the checkout's auth lives in ITS git config; the staged repo has none.
+if [[ -n "${GITHUB_TOKEN:-}" && "$origin_url" == https://github.com/* ]]; then
+    origin_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${origin_url#https://github.com/}"
+fi
 (
     cd "$stage"
     git init --quiet -b web-dist

@@ -15,6 +15,10 @@ on:
       - 'cli-v*'
       - 'web-v*'
       - 'desktop-v*'
+  # auto-release.yml pushes tags with the workflow GITHUB_TOKEN, which never
+  # auto-triggers this workflow (GitHub's recursion guard) — it dispatches
+  # explicitly with --ref <tag> instead.
+  workflow_dispatch:
 
 permissions:
   contents: write
