@@ -150,4 +150,12 @@ export declare namespace events {
     const CHUNK_TYPE_THINKING: 'thinking';
     const CHUNK_TYPE_TOOL_START: 'tool_start';
     const CHUNK_TYPE_TOOL_END: 'tool_end';
+    const EMIT_SESSION_OPEN: 'session.open';
+    const EMIT_SESSION_SET: 'session.set';
+    const EMIT_SESSION_PATCH: 'session.patch';
+    const EMIT_SESSION_REMOVE: 'session.remove';
+    const EMIT_SESSION_IDS: 'session.ids';
+    const EMIT_SESSION_MATERIALIZE: 'session.materialize';
+    const EMIT_SESSION_CLOSE: 'session.close';
+    const SESSION_DELTA: 'session.delta';
 }

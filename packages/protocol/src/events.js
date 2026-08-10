@@ -67,3 +67,32 @@ export const CHUNK_TYPE_TEXT = 'chunk';
 export const CHUNK_TYPE_THINKING = 'thinking';
 export const CHUNK_TYPE_TOOL_START = 'tool_start';
 export const CHUNK_TYPE_TOOL_END = 'tool_end';
+
+// ── Query sessions ───────────────────────────────────────────────────────────
+// A session is a long-running, refinable query living on the server: an ordered
+// map of labelled cues whose resolved operands are cached, so refining costs one
+// re-AND instead of a full re-query. Unlike every other channel here these are
+// RPCs — each takes a socket.io ack callback answering with the standard
+// { status, payload } envelope shape.
+//
+// Materialization stays PULL: a delta carries ids only, and the client hydrates
+// `added` through GET /workspaces/:id/documents?ids=… so only genuinely new
+// documents are fetched. Deltas + stable keys are what let a live view update
+// in place instead of swapping the whole list.
+
+// Client → server
+export const EMIT_SESSION_OPEN = 'session.open';     // { workspace, specs[], opts } -> { sessionId, ids, count }
+export const EMIT_SESSION_SET = 'session.set';       // { sessionId, label, spec }   -> { label, ids, count }
+export const EMIT_SESSION_PATCH = 'session.patch';   // { sessionId, label, spec }   -> { label, ids, count }
+export const EMIT_SESSION_REMOVE = 'session.remove'; // { sessionId, label }         -> { label, ids, count }
+export const EMIT_SESSION_IDS = 'session.ids';       // { sessionId }                -> { ids, count }
+// The "show me" step: rank the cue-narrowed candidate set and hydrate a page.
+// `match` is { text?, image?, similarTo?, minDistance?, maxDistance? } — text
+// and image FUSE (RRF) when both are given. Omit it for a plain bitmap slice.
+export const EMIT_SESSION_MATERIALIZE = 'session.materialize'; // -> { documents, ids, count, totalCount }
+export const EMIT_SESSION_CLOSE = 'session.close';   // { sessionId }                -> { sessionId, closed }
+
+// Server → client: the QuerySession change payload, shaped by the session's
+// emit mode — delta (default) { added[], removed[], count }, ids { ids, count },
+// or page { docs, count, totalCount }.
+export const SESSION_DELTA = 'session.delta';

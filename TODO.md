@@ -15,7 +15,134 @@ materialize`, precise `membership.changed` key-touch invalidation with coarse re
 temporal/geo/rel operands, debounced recompute, `serialize()/rehydrate()`. Tests:
 `tests/query-session.test.js`. The checklist below is retained for the record.
 
-### NEXT: session transport + delta-driven UI (planned 2026-08-10, separate session)
+### LANDED 2026-08-10: session transport + delta-driven UI (round 1)
+
+The plan below is DONE for round 1. What shipped:
+
+- **canvas-server 2.4.0** — `Workspace.openSession(specs, opts)` + `normalizeSessionSpec()`
+  (cue specs get the same canvas-querySpec folding / ctx:dir: path normalization as
+  `list()`; text queries and paging opts are stripped — a cue is structural, `resolveCandidates`
+  has no text stage). The workspace TRACKS its sessions and closes them in `stop()`.
+  `Workspace.buildMatch({text, imageBytes, similarTo})` builds the typed match descriptor for
+  the ranking stage (embedding an ephemeral frame via inferd, or reusing a stored vector).
+  `transports/websocket/channels/session.js`: per-socket registry, `session.open/set/patch/
+  remove/ids/materialize/close` RPC over socket.io acks (`{status, payload}`), `session.delta` push,
+  8 sessions + 32 cues per connection, share-token sockets clamped to their bound workspace,
+  close-on-disconnect. Tests: `tests/core/workspace/query-session.test.js`,
+  `tests/transports/websocket/session-channel.test.js`.
+- **protocol 0.2.0** — session event names + ack/delta shapes documented in `src/events.js`.
+- **canvas-web 2.4.0** — `socketService.request()` (promise ack, fails fast when the socket is
+  down), `services/session.ts`, `hooks/useQuerySession.ts` (Map<id,doc> + insertion-stable id
+  order, hydrates ONLY `added` via `GET /documents?ids=`, drops `removed`), and the workspace
+  page wired: while the Lens feed runs, the session drives the list and the per-tick refetch is
+  suppressed entirely. Sessions are an optimization — if `session.open` fails the page keeps its
+  stateless path, so an older server still works.
+
+**The two stages of a session read** (the thing to keep straight when canvas-inferd lands):
+
+1. **Cues = the candidate set.** Bitmap algebra: paths (`/home/house-build`), features, filters
+   (incl. `geo:near` from a GPS fix), and literal id-sets (a camera frame's kNN survivors, fed
+   via `set()` per frame). Cached per cue, hard-ANDed, precisely invalidated — this is what
+   deltas describe, and `count()` answers "is there anything" with zero document loads.
+2. **`match` = the ranking**, over the already-narrow candidate set: free text ("broken door"),
+   an image, or BOTH — the image rides as a vector leg on synapsd's typed match descriptor and
+   RRF-fuses with the full text pipeline (FTS + dense + text→image kNN), so a summarized note
+   surfaces next to the photos the frame matched. `session.materialize { match }` →
+   `QuerySession.materialize` → `db.rank(combined, match, opts)`.
+
+Relevance is a SCORE, not a membership predicate: it has no bitmap key, so it cannot be
+invalidated and must not live in a cue. Keeping it at the read means the text pipeline runs once
+per read instead of once per camera frame. To NARROW by relevance rather than order by it,
+materialize and feed the ids back as a cue — `rankAndPin()` in the hook does exactly that, using
+the same id-set seam the lens uses. Cue specs carrying `query`/`search`/`q` are REJECTED with a
+message pointing at materialize (silently dropping a user's search term is worse).
+
+**Verified, not assumed** (`tests/core/workspace/query-session.test.js`, real Lance FTS): a
+document's user-authored `comment` AND its generated `metadata.summary` are folded into FTS
+text unconditionally by `Document.generateFtsData` — even for schemas that declare no
+`ftsSearchFields` (photos, files). So commenting "broken door" on a photo makes it lexically
+resurfacable, a comment-only edit re-indexes (checksums untouched — no dedup fork), and the
+comment also embeds as its own text-space chunk. `mode:'fts'` narrows strictly within the cue
+scope; `'hybrid'` also admits semantic neighbours. The gardening documents sitting in front of
+that door are excluded by the text stage, not by the cues.
+
+**Live text is `rank()`, not a pinned cue.** With a match set, every delta re-ranks against the
+NEW candidate set, so the text keeps applying as the camera moves. Pinning search results as an
+id-set cue (`rankAndPin`) is a SNAPSHOT — correct for conversational drill-down where the
+candidate set stands still, WRONG under a live feed (documents that would match the text in the
+new candidate set stay excluded by the stale pin). Documented on the hook interface.
+
+**Decay: (a) DECIDED 2026-08-10 — inferd owns it, the db stays dumb.** Exponential decay from
+"now" plus preserved anchors is a per-cue WEIGHT model, but `QuerySession`'s combinator is
+hard-AND only (`'and'` is the only accepted value): a cue is in or out, and a decayed cue has no
+way to contribute partially. So inferd owns decay entirely and re-emits cues whose id-sets it has
+already weighted and thresholded — works today, costs one re-resolve per emission. The
+soft-overlap combinator (rank by how many cues a doc hits — a cheap bitmap sum, parked in
+"Session container" above) stays the later option (b) for making anchors cheap to keep alive;
+being pure bitmap math with no clock, it belongs INSIDE synapsd when it lands.
+
+**Boundary rule for synapsd vs inferd** (settled while deciding the above). The seam is already
+a DATA contract, not a plugin API: `rank()` accepts caller-supplied vector legs but never
+produces them, `getUnembeddedDocIds()` is a pull-queue for an external embedder to drain, and
+`metadata.summary` is a slot for deriver/captioner output whose author synapsd does not know.
+The test to apply to any proposed extension: **needs a clock or a network call → outside**
+(embedding, captioning, stream decay); **pure algebra over data at rest → inside** (soft
+combinator, band-bitmaps, `suggest()`); **would add a hard dependency → outside**
+(`onnxruntime-node` is inferd's, cf. the embedd extraction landmine). Note `QuerySession` is
+the one thing in synapsd holding timers — it lives in `src/session/`, outside the core index,
+and should stay there.
+
+The house-build walkthrough, end to end. You are already at `work://architecture/project-foo`,
+so the path cue pre-filters to that project's notes and captioned photos. Standing at the door:
+GPS adds a `geo:near` cue; the camera adds a `{ids: <frame kNN>}` cue replaced per frame — the
+candidate set now moves with the camera, one delta per change, only new documents fetched. The
+area is dense (gardening documents right in front of that door), so you type "broken door":
+`rank({ text: 'broken door' })` — or fused with the frame,
+`rank({ text: 'broken door', image: <frame> })` — narrows what SURVIVED the cues, hitting the
+comment you left on the photo. Every later delta re-ranks, so it stays live. When canvas-inferd
+takes over the frame loop it patches the SAME cues server-side and the client contract does not
+change; when the S2-like projected-representation space replaces the vector legs, it swaps in at
+the operand level (a cue's bitmap can come from band-bitmaps instead of a kNN — the container
+does not change).
+
+Deliberately deferred (round 1 non-goals unless noted):
+
+- [ ] **Grace TTL / reconnect-with-state.** Sessions are connection-scoped; a reconnect opens a
+      fresh one. `serialize()` makes parking cheap, but a parked session needs a resume
+      handshake the client does not have — holding operands for a socket that may never return
+      is a pure leak. Add both together or neither.
+- [ ] **A cue over a tree path that does not exist yet never gets a delta.** Verified against
+      synapsd: `#buildContextSelectorBitmap` skips a path with no layer (`if
+      (!tree.getLayerForPath(...)) continue`), so it records NO collection key and nothing can
+      dirty it — documents later filed there push nothing. Right fix is in synapsd: treat a
+      requested-but-absent path as COARSE (no stable key set → re-resolve on write), same rule
+      temporal/geo operands already follow. Mitigated client-side for now: the webui issues a
+      cheap `session.ids` resync (bitmap read, no doc loads) on workspace document events.
+- [x] **Search box wired to `rank()`** (2026-08-10). While the Lens feed runs, a single search
+      query becomes the session's match instead of a refetch; every later delta re-ranks against
+      the new candidate set, so the text keeps applying as the camera moves. A STACKED query
+      (`?q=car&q=red`) still falls back to the stateless path — that is chained AND-narrowing
+      across separate searches and a session ranks by one match. The Lens feed itself still
+      embeds frames client-side via `POST /documents/search/image` (idsOnly) and pushes the
+      survivors as a cue; that loop is what canvas-inferd takes over.
+
+- [ ] **BLOCKED ON A SYNAPSD PUSH: scoped-FTS fix.** `canvas-synapsd` 3.2.1 (local sibling, not
+      pushed) fixes `LanceIndex.ftsQuery` bounding its BM25 fetch by the CANDIDATE-SET SIZE.
+      Filtering is a post-filter, so a scope of N documents fetched the globally top-N rows and
+      kept only those that happened to be candidates: the tighter the scope the more likely the
+      search returned NOTHING. Broke far more than sessions — any `?ids=…&q=…`, any narrow path
+      + search. One-line fix + `tests/fts-scoped-search.test.js` (fails without it; whole
+      synapsd suite green, 386 tests). To land: push synapsd, then `npm run deps:bump` in
+      canvas-server. The regression gate `tests/transports/websocket/session-channel.test.js
+      › ranking re-evaluates against a MOVING candidate set` SKIPS itself below 3.2.1 and
+      self-activates once the pin advances.
+- [ ] The session path covers the plain document list only. Layer views and backend "unfiled
+      only" keep the stateless refetch (which already keeps previous results + stable keys, so
+      it does not blink either).
+- [ ] Session-driven ordering is insertion-stable by design (a live feed must not reshuffle the
+      grid every frame), so `sortBy`/pagination do not apply while the feed drives the list.
+
+### Original plan (retained for the record)
 
 **The problem observed:** Lens live-mode (camera feed / shared content) in the webui refetches
 and re-renders the whole document list per tick — the UI "blinks". Root cause: sessions are
@@ -54,7 +181,8 @@ deltas to a client, so every consumer above synapsd is stuck in snapshot-refetch
    not the redundant fetch.
 4. **synapsd (small, optional):**
    - [ ] session-wide `andNot(internal/gc/deleted)` in `#combine()` (parked from Slice B½: an
-         id-set cue has no keys, so deletes never dirty it).
+         id-set cue has no keys, so deletes never dirty it). Same blind spot as the
+         absent-path case above; the webui `session.ids` resync covers both for now.
    - [ ] `materialize()` already exists for emit:'page' consumers; nothing else blocking.
 
 **Non-goals for round 1:** multi-workspace sessions, session sharing between users,
