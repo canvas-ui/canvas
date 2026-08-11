@@ -31,6 +31,9 @@ Current embedding behavior and service boundaries are documented in
       caption-write-recaption loop.
 - [ ] Add audio transcription and decide whether existing voice STT becomes an
       inferd provider or remains a Canvas Server adapter.
+- [ ] Implement the `text` summarize modality. Config already validates it
+      (`config.js` SUMMARIZE_MODALITIES) but only `describeImage` exists, so
+      long-body documents (mail, GitHub issues) get vectors and no summary.
 - [ ] Benchmark a cheap SigLIP/CLIP text bridge against caption-then-embed before
       making captions mandatory for cross-modal retrieval.
 
@@ -72,6 +75,38 @@ Current embedding behavior and service boundaries are documented in
 - [ ] Define the smallest data contract between them: observations, anchors,
       summaries, provenance, and confidence. Do not expose runtime tensors
       unless an experiment proves they are needed.
+
+## GitHub issues connector
+
+Same shape as IMAP mail: poll, persist the body locally, let the off-thread
+embed/summarize workers pick documents up from `document.inserted`. No
+real-time inference during ingestion. Reference implementation to mirror is
+`canvas-server/src/core/workspace/services/imap/`.
+
+- [ ] Register `data/schema/task/github/issue` in SynapsD as a task subtype, so
+      issues fall out of existing `data/schema/task` queries and the todo lens
+      without a second code path. `vectorEmbeddingFields: title + body`.
+- [ ] Use identity-only `checksumFields` (repository + number, or the API URL),
+      NOT a raw-payload hash. Issues mutate; hashing content would fork a new
+      document on every state change or comment instead of taking the
+      `existing.update()` dedup path.
+- [ ] Add `services/github/`: per-repo polling backend (REST `since` + ETag or
+      GraphQL), config in `config/stored.json` under `driver: 'github'`, raw
+      issue JSON through the existing `persistBlob` seam.
+- [ ] File issues under a backends-tree `/github/<owner>/<repo>/issues` subtree
+      with `context: null`, provenance location `github://owner/repo/issues/N`.
+- [ ] Store comments as an array in `data` plus the raw blob. Do not build an
+      email-style `inReplyTo` graph — GitHub already flattens the thread and
+      inferd chunking handles long bodies.
+- [ ] Wire the `github` driver through the `Workspace.js` backend facade (~15
+      `driver === 'imap'` switch sites), the services status route, and
+      `WorkspaceStoredIndex` location describe/destroy.
+- [ ] Web: issue renderer (the renderer registry is exact-match on schema),
+      `schema-meta.ts` entry, and a config panel modelled on
+      `imap-mailboxes-panel.tsx`.
+- [ ] Decide whether issue state (open/closed) maps onto task
+      `status: pending/completed` or stays a separate field. Mapping it makes
+      the todo checkbox write back to GitHub, which needs a write path first.
 
 ## Integration leftovers
 
