@@ -42,9 +42,10 @@ This repository is one component of the Canvas project:
 Canvas components are not all licensed the same way. The server runtime and
 the services behind it (canvas-server, canvas-synapsd, canvas-stored,
 canvas-inferd, canvas-agentd) are dual-licensed: AGPL-3.0-or-later or a
-commercial licence. Everything in THIS repository, and the canvas-fuse client,
-is AGPL-only. The COMPONENTS section of the project NOTICE lists which is
-which.
+commercial licence. The shared libraries in this repository (`packages/*`)
+are dual-licensed the same way. The client applications in this repository
+(`apps/*`), and the canvas-fuse client, are AGPL-only. The COMPONENTS section
+of the project NOTICE lists which is which.
 
 
 DISTRIBUTION
@@ -70,18 +71,26 @@ too. See the project NOTICE.
 COPYRIGHT AND LICENSING
 -----------------------
 
-Copyright in this codebase is held by Jozef Melich.
+Copyright in this codebase is held by Jozef Melich. Augmentd s.r.o. holds an
+exclusive licence to it, including the right to grant sublicences, and is the
+entity authorised to issue commercial licences for Canvas.
 
-Everything in this repository is available under the AGPL-3.0-or-later and
-under no other terms. No commercial licence is offered for it and none is
-planned. The Canvas clients stay free software in all cases, including for
-anyone who holds a commercial licence to the Canvas server runtime and its
-services.
+The client applications (`apps/*`) are available under the AGPL-3.0-or-later
+and under no other terms. No commercial licence is offered for them to
+anyone, and none is planned. The Canvas clients stay free software in all
+cases, including for anyone who holds a commercial licence to the Canvas
+server runtime and its services.
 
-A commercial licence to another Canvas component does not extend to anything
-here. If you modify one of these clients and convey it, or serve a modified
-web UI, the AGPL applies to you in full, whatever other Canvas licences you
-hold.
+The shared libraries (`packages/*`) are also available under the
+AGPL-3.0-or-later, and additionally under the Canvas commercial licence, as
+part of the dual-licensed Canvas engine. Contributions to `packages/*` are
+therefore asked for under the Canvas CLA; contributions to `apps/*` need only
+a DCO sign-off. See CONTRIBUTING.md.
+
+A commercial licence to a dual-licensed Canvas component does not extend to
+the client applications. If you modify one of these clients and convey it, or
+serve a modified web UI, the AGPL applies to you in full, whatever other
+Canvas licences you hold.
 
 Commercial licensing of the dual-licensed components is described at
 https://github.com/canvas-ui/canvas-server/blob/main/COMMERCIAL.md

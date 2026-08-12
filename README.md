@@ -36,15 +36,22 @@ hoisted them.
 
 ## Licensing
 
-Everything in this repository is **AGPL-3.0-or-later, and under no other
-terms** — see [LICENSE](LICENSE) and [NOTICE](NOTICE). No commercial licence
-is offered for the clients and shared packages, to anyone, and none is
-planned: the Canvas clients stay free software in all cases.
+Everything in this repository is available under the
+**AGPL-3.0-or-later** — see [LICENSE](LICENSE) and [NOTICE](NOTICE) — but the
+two halves differ beyond that:
 
-The Canvas engine is licensed differently: `canvas-server`, `canvas-synapsd`,
-`canvas-stored`, `canvas-inferd` and `canvas-agentd` are dual-licensed
-(AGPL-3.0-or-later or a commercial licence). See the server's
-[COMMERCIAL.md](https://github.com/canvas-ui/canvas-server/blob/main/COMMERCIAL.md).
+- **`apps/*` are AGPL-only, for everyone, permanently.** No commercial
+  licence is offered for the client applications, to anyone, and none is
+  planned: the Canvas clients stay free software in all cases. Contributions
+  need only a DCO sign-off (`git commit -s`).
+- **`packages/*` are part of the dual-licensed Canvas engine** (AGPL-3.0-or-later
+  or a commercial licence), alongside `canvas-server`, `canvas-synapsd`,
+  `canvas-stored`, `canvas-inferd` and `canvas-agentd`. Contributions are
+  asked for under the one-time Canvas [CLA](https://github.com/canvas-ui/canvas-server/blob/main/CLA.md).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) here and the server's
+[COMMERCIAL.md](https://github.com/canvas-ui/canvas-server/blob/main/COMMERCIAL.md)
+for the commercial side.
 
 ## Package naming & distribution
 
