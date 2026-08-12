@@ -13,7 +13,7 @@ apps/
   desktop                Tauri desktop app (frontend builds in CI; Rust bundle needs the Tauri toolchain)
   browser-extension      Chromium + Firefox extension (esbuild)
   shell                  bash client — not an npm package, pnpm skips it
-  web                    (arrives with the web repoint slice)
+  web                    web UI (vite/react; prebuilt artifact consumed by canvas-server)
 packages/
   protocol               wire contract: envelope, error codes, routes, events
   schemas                document schema ids, versions, builders
@@ -34,20 +34,17 @@ install-time error, which is the property that keeps `packages/*` independently
 installable. Do not add dependencies that only work because something else
 hoisted them.
 
-## Licensing (interim)
+## Licensing
 
-**There is intentionally no repository-wide LICENSE file yet.** This repo is
-mid-migration:
+Everything in this repository is **AGPL-3.0-or-later, and under no other
+terms** — see [LICENSE](LICENSE) and [NOTICE](NOTICE). No commercial licence
+is offered for the clients and shared packages, to anyone, and none is
+planned: the Canvas clients stay free software in all cases.
 
-- `apps/*` retain the LICENSE files of the repositories they were folded from
-  (currently AGPL-3.0-or-later).
-- `packages/*` are `AGPL-3.0-or-later` per their manifest `license` fields
-  (authored from AGPL sources).
-- No rights are granted beyond what each directory states.
-
-The open layer is planned to move to Apache-2.0 in a later, announced phase of
-the migration; until that happens the per-directory terms above are the whole
-story.
+The Canvas engine is licensed differently: `canvas-server`, `canvas-synapsd`,
+`canvas-stored`, `canvas-inferd` and `canvas-agentd` are dual-licensed
+(AGPL-3.0-or-later or a commercial licence). See the server's
+[COMMERCIAL.md](https://github.com/canvas-ui/canvas-server/blob/main/COMMERCIAL.md).
 
 ## Package naming & distribution
 
@@ -58,7 +55,6 @@ The `augmentd-labs` npm org is claimed; nothing here publishes yet.
 Distribution plan: workspace links inside the monorepo (forever), `file:`
 links to sibling checkouts during the transition, **GitHub Release tarballs**
 (`pnpm pack` per package, attached to a tag) once canvas-server's CI/Docker
-needs fetchable artifacts, and public npmjs when the packages relicense and
-third-party adoption starts. GitHub Packages is deliberately not used: it
+needs fetchable artifacts, and public npmjs when third-party adoption starts. GitHub Packages is deliberately not used: it
 requires an auth token even for public installs and chains the scope to the
 org name.
