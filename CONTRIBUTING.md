@@ -30,6 +30,11 @@ grant, not an assignment. Comment on your first pull request touching
 I have read the CLA document and I hereby sign the CLA.
 ```
 
+A status check enforces this automatically on pull requests touching
+`packages/*`: the CLA bot posts instructions, records your signature (once,
+against your GitHub account) and unblocks the check. It never engages on
+`apps/*`-only pull requests.
+
 The reasoning behind the split is laid out in the server's
 [CONTRIBUTING.md](https://github.com/canvas-ui/canvas-server/blob/main/CONTRIBUTING.md)
 and [COMMERCIAL.md](https://github.com/canvas-ui/canvas-server/blob/main/COMMERCIAL.md).
