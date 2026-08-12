@@ -1,10 +1,13 @@
 # CLA enforcement (CLA Assistant Lite, contributor-assistant/github-action).
-# Only packages/* is dual-licensed and CLA-covered (see CONTRIBUTING.md), so
-# the status check is created only for pull requests that touch packages/**.
-# apps/* stays DCO-only and this workflow ignores it. The issue_comment
-# trigger cannot be path-filtered; a sign comment on an apps-only PR just
-# records the (harmless) signature. Signatures live on the `cla-signatures`
-# branch of this repository. Runs entirely on GITHUB_TOKEN.
+# Only packages/* is dual-licensed and CLA-covered (see CONTRIBUTING.md);
+# apps/* stays DCO-only. The workflow runs on every pull request but the
+# scope step gates enforcement to PRs that touch packages/** — deliberately
+# NOT an `on.paths` filter, because a required check skipped by path
+# filtering leaves the PR stuck in "Pending" forever. Apps-only PRs report
+# success here, so the check can safely be marked required. A sign comment
+# on an apps-only PR just records a (harmless) signature. Signatures live on
+# the `cla-signatures` branch of this repository. Runs entirely on
+# GITHUB_TOKEN.
 name: cla
 
 on:
@@ -12,8 +15,6 @@ on:
     types: [created]
   pull_request_target:
     types: [opened, closed, synchronize]
-    paths:
-      - 'packages/**'
 
 permissions:
   actions: write
@@ -25,8 +26,21 @@ jobs:
   cla:
     runs-on: ubuntu-latest
     steps:
+      - name: Check whether packages/* is touched
+        id: scope
+        if: github.event_name == 'pull_request_target'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+               --paginate --jq '.[].filename' | grep -q '^packages/'; then
+            echo "cla=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cla=false" >> "$GITHUB_OUTPUT"
+            echo "No packages/* changes — CLA not required for this pull request."
+          fi
       - name: CLA Assistant
-        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA document and I hereby sign the CLA.') || github.event_name == 'pull_request_target'
+        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA document and I hereby sign the CLA.') || steps.scope.outputs.cla == 'true'
         uses: contributor-assistant/github-action@v2.6.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
