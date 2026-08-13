@@ -1,10 +1,10 @@
 name: release
 
 # Tag-per-app releases (decided in the migration plan): pushing cli-vX.Y.Z /
-# web-vX.Y.Z / desktop-vX.Y.Z builds that app and attaches its artifacts to
-# the GitHub Release for the tag. canvas-fuse releases from its own repo the
-# same way (v* tags there). Each job asserts the tag version matches the
-# app's manifest so a stray tag can't publish mislabeled artifacts.
+# web-vX.Y.Z / desktop-vX.Y.Z / extension-vX.Y.Z builds that app and attaches
+# its artifacts to the GitHub Release for the tag. canvas-fuse releases from
+# its own repo the same way (v* tags there). Each job asserts the tag version
+# matches the app's manifest so a stray tag can't publish mislabeled artifacts.
 #
 # canvas-server consumes web via the versioned tarball URL — after a web
 # release, bump the URL in canvas-server/package.json.
@@ -15,6 +15,7 @@ on:
       - 'cli-v*'
       - 'web-v*'
       - 'desktop-v*'
+      - 'extension-v*'
   # auto-release.yml pushes tags with the workflow GITHUB_TOKEN, which never
   # auto-triggers this workflow (GitHub's recursion guard) — it dispatches
   # explicitly with --ref <tag> instead.
@@ -62,6 +63,9 @@ jobs:
   cli:
     if: startsWith(github.ref_name, 'cli-v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write # npm provenance attestation
     steps:
       - uses: actions/checkout@v4
       - name: Assert tag matches apps/cli version
@@ -74,16 +78,18 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          # Writes the .npmrc auth line that reads NODE_AUTH_TOKEN below.
+          registry-url: https://registry.npmjs.org
       - uses: oven-sh/setup-bun@v2
       - run: pnpm install --frozen-lockfile
       # bun cross-compiles all targets from one Linux runner.
       - name: Build binaries
         run: |
-          pnpm --filter canvas-cli run build:linux
-          pnpm --filter canvas-cli run build:linux-arm
-          pnpm --filter canvas-cli run build:macos
-          pnpm --filter canvas-cli run build:macos-arm
-          pnpm --filter canvas-cli run build:windows
+          pnpm --filter @augmentd-labs/canvas-cli run build:linux
+          pnpm --filter @augmentd-labs/canvas-cli run build:linux-arm
+          pnpm --filter @augmentd-labs/canvas-cli run build:macos
+          pnpm --filter @augmentd-labs/canvas-cli run build:macos-arm
+          pnpm --filter @augmentd-labs/canvas-cli run build:windows
       - name: Checksums
         run: cd apps/cli/dist && sha256sum canvas-* > SHA256SUMS
       - uses: softprops/action-gh-release@v2
@@ -99,6 +105,79 @@ jobs:
             apps/cli/dist/canvas-macos-arm
             apps/cli/dist/canvas-windows.exe
             apps/cli/dist/SHA256SUMS
+
+      # npm publish runs AFTER the GitHub Release so a registry hiccup can
+      # never cost you the binaries. The CLI's three workspace deps go first —
+      # pnpm rewrites "workspace:*" to the real versions when it packs, so
+      # they must already exist on the registry by the time the CLI lands.
+      # Each is skipped when that exact version is already published:
+      # packages/* bump far less often than the CLI, and a cli-v tag must not
+      # fail just because canvas-protocol didn't change since last release.
+      #
+      # Auth is a granular NPM_TOKEN today. Once all four packages exist on
+      # npmjs, configure Trusted Publishing (OIDC) per package and drop both
+      # the secret and NODE_AUTH_TOKEN — the id-token permission above is
+      # already what that needs.
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+        run: |
+          for dir in packages/protocol packages/schemas packages/api-client apps/cli; do
+            name=$(node -p "require('./$dir/package.json').name")
+            ver=$(node -p "require('./$dir/package.json').version")
+            if npm view "$name@$ver" version >/dev/null 2>&1; then
+              echo "$name@$ver already published — skipping"
+              continue
+            fi
+            echo "Publishing $name@$ver"
+            pnpm --filter "$name" publish --access public --no-git-checks
+          done
+
+  # Was built on a maintainer's laptop by scripts/update-releases.sh and
+  # uploaded with `gh release create`. Built here instead so the zips users
+  # install come from a clean runner with a frozen lockfile — and so the same
+  # tag-per-app path covers every app.
+  extension:
+    if: startsWith(github.ref_name, 'extension-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Both manifests carry their own version field; all three must agree
+      # with the tag, or the stores would receive a mislabeled package.
+      - name: Assert tag matches package.json and both manifests
+        run: |
+          v="${GITHUB_REF_NAME#extension-v}"
+          for f in package.json manifest-chromium.json manifest-firefox.json; do
+            m=$(node -p "require('./apps/browser-extension/$f').version")
+            [ "$v" = "$m" ] || { echo "tag $v != $f $m"; exit 1; }
+          done
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter canvas-browser-extension run build
+      - name: Verify packages
+        working-directory: apps/browser-extension/packages
+        run: |
+          for z in canvas-extension-chromium.zip canvas-extension-firefox.zip; do
+            [ -f "$z" ] || { echo "build produced no $z"; exit 1; }
+            unzip -tq "$z" || { echo "$z is not a valid zip"; exit 1; }
+          done
+          sha256sum canvas-extension-*.zip > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: canvas-browser-extension ${{ github.ref_name }}
+          body: >
+            Chromium (Chrome, Edge, Brave, Opera) and Firefox packages.
+            Store submissions are a separate, manually approved step — these
+            zips are the exact artifacts uploaded there.
+          files: |
+            apps/browser-extension/packages/canvas-extension-chromium.zip
+            apps/browser-extension/packages/canvas-extension-firefox.zip
+            apps/browser-extension/packages/SHA256SUMS
 
   desktop:
     if: startsWith(github.ref_name, 'desktop-v')

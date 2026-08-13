@@ -3,7 +3,7 @@
 # never drift:
 #   web        rebuilt and force-published to the web-dist branch every push
 #              (deployments re-resolve the branch on their next update)
-#   extension  released (tag + zips) only when its version has no tag yet
+#   extension  tagged when its version has no tag yet → release.yml builds
 #   cli        tagged when its version has no tag yet → release.yml builds
 #   desktop    tagged when its version has no tag yet → release.yml builds
 # So: bump an app's version in a push and its release happens by itself;

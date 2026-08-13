@@ -2,7 +2,7 @@
 # update-releases.sh — ONE command to release any app in this monorepo.
 #
 #   npm run release:web                       build + publish the web-dist branch
-#   npm run release:extension                 build + GitHub release with both zips
+#   npm run release:extension                 tag extension-v<ver> → CI builds both zips
 #   npm run release:cli                       tag cli-v<ver> → CI builds + publishes
 #   npm run release:desktop                   tag desktop-v<ver> → CI builds (multi-OS)
 #   npm run release:all                       all of the above; already-released
@@ -18,8 +18,10 @@
 #              branch. canvas-server consumes it as
 #              "canvas-web": "github:canvas-ui/canvas#web-dist" and re-resolves
 #              on every deployment update — a push here updates every instance.
-#   extension  local build → packages/canvas-extension-{chromium,firefox}.zip →
-#              `gh release create extension-v<ver>` with both zips attached.
+#   extension  tag extension-v<ver> + push — release.yml builds both zips on a
+#              clean runner and attaches them. (It used to build locally and
+#              upload from the maintainer's machine; CI builds it now, so the
+#              artifact that reaches the browser stores is reproducible.)
 #   cli        tag cli-v<ver> + push — release.yml builds and publishes.
 #   desktop    tag desktop-v<ver> + push — release.yml builds (needs CI's
 #              multi-OS runners; deliberately NOT built locally).
@@ -77,7 +79,7 @@ fi
 # ── App recipes ──────────────────────────────────────────────────────────────
 case "$APP" in
     web)       APP_DIR="apps/web";               MODE="branch"; TAG_PREFIX="web-v" ;;
-    extension) APP_DIR="apps/browser-extension"; MODE="gh-release"; TAG_PREFIX="extension-v" ;;
+    extension) APP_DIR="apps/browser-extension"; MODE="ci-tag"; TAG_PREFIX="extension-v" ;;
     cli)       APP_DIR="apps/cli";               MODE="ci-tag"; TAG_PREFIX="cli-v" ;;
     desktop)   APP_DIR="apps/desktop";           MODE="ci-tag"; TAG_PREFIX="desktop-v" ;;
     *) die "unknown app '$APP' — valid: web, extension, cli, desktop" ;;
@@ -113,9 +115,6 @@ fi
 
 command -v corepack >/dev/null || die "corepack not found (ships with node >= 16.9)"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-if [[ "$MODE" == "gh-release" ]]; then
-    command -v gh >/dev/null || die "gh CLI required for extension releases (attaches the zips)"
-fi
 
 # ── Optional version bump ────────────────────────────────────────────────────
 if [[ -n "$BUMP" ]]; then
@@ -123,6 +122,20 @@ if [[ -n "$BUMP" ]]; then
     ( cd "$APP_DIR" && npm version "$BUMP" --no-git-tag-version >/dev/null ) || die "version bump failed"
     ver=$(node -p "require('./$APP_DIR/package.json').version")
     git add "$APP_DIR/package.json"
+    # The extension carries the version in two more places, and release.yml
+    # asserts all three agree — bump them together or the tag fails CI.
+    if [[ "$APP" == "extension" ]]; then
+        for f in manifest-chromium.json manifest-firefox.json; do
+            node -e "
+const fs = require('fs'), p = '$APP_DIR/$f';
+const m = JSON.parse(fs.readFileSync(p, 'utf8'));
+m.version = '$ver';
+fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
+" || die "failed to bump $f"
+            git add "$APP_DIR/$f"
+        done
+        say "Synced $ver into both extension manifests"
+    fi
     git commit --quiet -m "$APP_DIR $ver" || die "bump commit failed"
     say "Bumped $APP_DIR to $ver (committed)"
 fi
@@ -138,7 +151,7 @@ push_main_if_needed() {
     fi
 }
 
-# ── Mode: ci-tag (cli, desktop) — CI builds, we only tag ─────────────────────
+# ── Mode: ci-tag (cli, desktop, extension) — CI builds, we only tag ──────────
 if [[ "$MODE" == "ci-tag" ]]; then
     if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
         $SKIP_EXISTING && { say "$APP $ver already released ($tag exists) — skipping"; exit 0; }
@@ -159,35 +172,6 @@ if [[ "$MODE" == "ci-tag" ]]; then
             || say "WARN: could not dispatch release.yml for $tag — run it manually"
     fi
     say "Done: $tag pushed — release.yml is building. Watch: gh run list --workflow=release.yml --limit 1"
-    exit 0
-fi
-
-# ── Mode: gh-release (extension) — build locally, attach zips ────────────────
-if [[ "$MODE" == "gh-release" ]]; then
-    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-        $SKIP_EXISTING && { say "$APP $ver already released ($tag exists) — skipping"; exit 0; }
-        die "tag $tag already exists — bump first (--bump patch)"
-    fi
-    say "Installing (filtered, frozen lockfile)..."
-    corepack pnpm install --filter canvas-browser-extension... --frozen-lockfile >/dev/null || die "pnpm install failed"
-    say "Building extension $ver..."
-    corepack pnpm --filter canvas-browser-extension run build >/dev/null || die "extension build failed"
-    for z in canvas-extension-chromium.zip canvas-extension-firefox.zip; do
-        [[ -f "$APP_DIR/packages/$z" ]] || die "build produced no $z"
-        unzip -tq "$APP_DIR/packages/$z" >/dev/null || die "$z is not a valid zip"
-    done
-    if ! $PUSH; then
-        say "--no-push: would push main (if needed), tag $tag, and: gh release create $tag <zips>"
-        exit 0
-    fi
-    push_main_if_needed
-    git tag "$tag" && git push origin "$tag" || die "tag push failed"
-    gh release create "$tag" \
-        --title "canvas-browser-extension $ver" \
-        --notes "Chromium + Firefox packages, built from main@$rev by scripts/update-releases.sh" \
-        "$APP_DIR/packages/canvas-extension-chromium.zip" \
-        "$APP_DIR/packages/canvas-extension-firefox.zip" || die "gh release create failed"
-    say "Done: $tag released with both zips"
     exit 0
 fi
 
