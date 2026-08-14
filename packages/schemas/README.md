@@ -18,15 +18,18 @@ trimmed before keep trimming.
 
 ## Known divergences, still client-side (on purpose)
 
-- Browser extension tab documents add a top-level `featureArray` and fixed
-  `metadata.contentType/contentEncoding`; that stays in the extension until it
-  migrates onto this package. **Verified server-side (2026-08-09):** the
-  doc-level `featureArray` is inert — synapsd's `Document` reads only
-  `features` (v3) or legacy `metadata.features`; the extension works because
-  its call sites mirror the same array into the request-body `features`,
-  which is indexed but not stored on the row. Recorded follow-up: move the
-  extension to doc-level `features` so tags are stored *and* ticked (that is
-  also what makes tag-removal unticking work), then adopt `buildTabDoc` here.
+- ~~Browser extension tab documents add a top-level `featureArray`.~~
+  **Resolved 2026-08-14 (extension v3.1.0):** the extension now builds tab
+  documents with `buildTabDoc` and asserts tags via doc-level `features`, so
+  tags are stored on the row *and* ticked. The old top-level `featureArray`
+  was inert — synapsd's `Document` reads only `features` (v3) or legacy
+  `metadata.features` — which is why removing a tag never unticked it: the
+  array was mirrored into the request-body `features` (indexed, not stored),
+  leaving nothing for the next write to diff against. Verified end-to-end
+  against canvas-server 2.5.13: dropping `tag/x` from the array now unticks
+  `tag/x` and leaves `client/app/*` ticked. The fixed
+  `metadata.contentType/contentEncoding` is still extension-supplied, passed
+  through `buildTabDoc`'s `metadata` option.
 - Web's post-upload File document (`stored://` blob URL, sha256-only,
   `buildFileDocument(blob, file, …)`) is a different flow from the cli's
   index-in-place `buildFileDoc` (`file://<deviceId>/…`, sha256+md5). The

@@ -9,7 +9,7 @@
   "scripts": {
     "build": "pnpm -r --if-present run build:dev",
     "test": "pnpm -r --if-present run test",
-    "lint": "eslint . --no-error-on-unmatched-pattern && pnpm -r --if-present --filter '!canvas-web' --filter '!canvas-monorepo' run lint",
+    "lint": "eslint . --no-error-on-unmatched-pattern && pnpm -r --if-present --filter '!canvas-monorepo' run lint",
     "format": "prettier --write \"packages/**/*.{js,md,json}\"",
     "changeset": "changeset",
     "release:web": "bash scripts/update-releases.sh web",

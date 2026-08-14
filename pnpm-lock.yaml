@@ -35,6 +35,9 @@ importers:
       '@augmentd-labs/canvas-protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@augmentd-labs/canvas-schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       iconify-icon:
         specifier: ^3.0.2
         version: 3.0.2
