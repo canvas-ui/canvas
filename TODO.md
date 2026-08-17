@@ -86,37 +86,77 @@ stay here:
       summaries, provenance, and confidence. Do not expose runtime tensors
       unless an experiment proves they are needed.
 
-## GitHub issues connector
+## GitHub issues connector — residue
 
-Same shape as IMAP mail: poll, persist the body locally, let the off-thread
-embed/summarize workers pick documents up from `document.inserted`. No
-real-time inference during ingestion. Reference implementation to mirror is
-`canvas-server/src/core/workspace/services/imap/`.
+SHIPPED 2026-08 as a driver in the generic connectors service
+(`canvas-server/src/core/workspace/services/connectors/`, docs in
+`canvas-server/docs/connectors.md`) — not the imap-style standalone service
+this section originally sketched. Landed: identity-only checksums
+(sha256 of the `gh://owner/repo/issues/N` provenance URL), backends-tree
+`/github/…` mirror, Workspace backend-facade wiring, web config panel
+(ConnectorsSection incl. edit + deletion-sync tickbox), `schema-meta.ts`
+entry + todo renderer, and bidirectional state mapping
+(open/closed ↔ pending/completed/cancelled, write-back behind
+`readOnly: false` + PAT). Still open:
 
-- [ ] Register `data/schema/task/github/issue` in SynapsD as a task subtype, so
-      issues fall out of existing `data/schema/task` queries and the todo lens
-      without a second code path. `vectorEmbeddingFields: title + body`.
-- [ ] Use identity-only `checksumFields` (repository + number, or the API URL),
-      NOT a raw-payload hash. Issues mutate; hashing content would fork a new
-      document on every state change or comment instead of taking the
-      `existing.update()` dedup path.
-- [ ] Add `services/github/`: per-repo polling backend (REST `since` + ETag or
-      GraphQL), config in `config/stored.json` under `driver: 'github'`, raw
-      issue JSON through the existing `persistBlob` seam.
-- [ ] File issues under a backends-tree `/github/<owner>/<repo>/issues` subtree
-      with `context: null`, provenance location `github://owner/repo/issues/N`.
-- [ ] Store comments as an array in `data` plus the raw blob. Do not build an
-      email-style `inReplyTo` graph — GitHub already flattens the thread and
-      inferd chunking handles long bodies.
-- [ ] Wire the `github` driver through the `Workspace.js` backend facade (~15
-      `driver === 'imap'` switch sites), the services status route, and
-      `WorkspaceStoredIndex` location describe/destroy.
-- [ ] Web: issue renderer (the renderer registry is exact-match on schema),
-      `schema-meta.ts` entry, and a config panel modelled on
-      `imap-mailboxes-panel.tsx`.
-- [ ] Decide whether issue state (open/closed) maps onto task
-      `status: pending/completed` or stays a separate field. Mapping it makes
-      the todo checkbox write back to GitHub, which needs a write path first.
+- [ ] Register `data/schema/task/github/issue` in SynapsD as a task subtype
+      (issues currently ingest as plain `data/schema/task`); hierarchical
+      schema matching in hooks/rules (2026-08-17) already anticipates
+      sub-schema ids. `vectorEmbeddingFields: title + body`.
+- [ ] Store issue comments as an array in `data` (driver only carries
+      `commentCount` today). No email-style `inReplyTo` graph — GitHub
+      already flattens the thread and inferd chunking handles long bodies.
+
+## Connector deletion-sync — remaining drivers
+
+Source→Canvas deletion-sync shipped 2026-08-17 (server 2.5.36) for github:
+opt-in `pruneRemoved: true` per backend; after a clean container sync the
+service compares a FULL source traversal (`driver.listIdentities(container)`
+→ every current provenance URL) against the mirror and hands source-deleted
+docs to `WorkspaceStoredIndex.reconcileRemovedLocations` (orphan-not-delete:
+locations dropped, mirror paths unticked, `data/no-location` + `orphanedAt`,
+purged later by retention GC). The service side is fully generic — each
+remaining driver only needs `listIdentities` (throw on ANY API error: a
+partial listing must never masquerade as complete). Contract + guard rails:
+`canvas-server/docs/connectors.md` "Deletion / destroy".
+
+- [ ] caldav `listIdentities`: identity is `caldav://<address>/<calendar>/<uid>`
+      with the UID inside the ICS — needs a no-time-range calendar-query
+      REPORT retrieving UIDs (partial retrieval `<c:calendar-data>` with only
+      the UID prop where supported; fall back to full calendar-data).
+      Server-compat nuance (GroupOffice/Nextcloud/Radicale/SOGo) — test
+      against a real server. Recurring events: one UID per series.
+- [ ] gcal: consider `showDeleted=true` on the events list instead of a full
+      traversal — the sync-token delta already carries `status: 'cancelled'`
+      tombstones, which could prune inline during `fetchChanges` (cheaper and
+      race-free); `listIdentities` then only backfills pre-existing deletes.
+- [ ] slack: full-history traversal is rate-limit-expensive
+      (`conversations.history` full walk per channel); check whether message
+      tombstones (`subtype: message_deleted` in deltas) are visible to bot
+      tokens before committing to the listing approach.
+- [ ] teams: Graph delta queries carry `@removed` tombstones — same inline
+      option as gcal; full listing via `/messages` pagination otherwise.
+
+## IMAP inbound deletion-sync
+
+Outbound EXPUNGE exists (Canvas → server delete). Inbound — user deletes mail
+in their mail client, Canvas mirrors it — does not; the poll loop only
+fetches new UIDs above `lastUid`. Wanted (2026-08-17): opt-in per account,
+same UI shape as connectors' "Remove items deleted at the source" tickbox.
+
+- [ ] Reconcile per folder: `UID SEARCH ALL` (or ESEARCH) against the
+      folder's indexed UIDs; missing UIDs → drop that `imap://` location via
+      `WorkspaceStoredIndex.reconcileRemovedLocations` (never hard-delete —
+      same orphan semantics as the connector prune). Only after a SUCCESSFUL
+      full search on an authenticated session; skip on any error.
+- [ ] Careful with UIDVALIDITY changes: a changed validity invalidates every
+      stored UID for the folder — treat as "cannot traverse", never as
+      "everything was deleted".
+- [ ] UI: per-account tickbox in `imap-mailboxes-panel.tsx` (accounts are in
+      `apps/web` ≥ 2.7.16; panel already collapses per account).
+- [ ] Reference: connector prune implementation in
+      `canvas-server/src/core/workspace/services/connectors/index.js`
+      (`#pruneContainer` — guard rails to mirror).
 
 ## Integration leftovers
 
