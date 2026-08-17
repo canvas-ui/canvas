@@ -1,5 +1,34 @@
 # TODO
 
+## Prose
+Great, btw, finally raining here, great as well, I love coding when it rains. Couple of cosmetics to
+  keep the cosmetic treatment tempo - Toolbox should also be closable by Esc, same for M1/M2 - sorry
+  should have tested that before. One more UI tweak, since we are slowly becoming something I tried to
+  build 15y ago - a true desktop overlay - lets add Settings > Appearance > Wallpaper and allow users to
+  set a global UI background wallapper (defaults to the current color) - with some basic settings
+  "Fill, Scale and Crop, Centered". Another thing - we should be able to add a full content page App 
+  (Notes, Todos) as a tab and now the most complex of the pack - we should allow displaying those tabs 
+  side-by-side. Now, there are many grid layout engines that are battle-tested that we could reuse - 
+  a-la vscode - but before we do any of the layout changes, let me first highlight where we are heading:
+  The target *default* UI is simple, you have your toolbox icon on the right bottom which can be moved
+  to your phone or any web-capable device and used from there, on the left you have a nice but hidden by
+  default list of pinned layers representing "task containers" - a gestre/keyboard shortcut or swipe 
+  can list all tasks of your selected workspace you want to work on today or in general. Selecting a 
+  layer will bring up all open canvases related to your work that user can navigate with swipe gestures
+  on top of his toolbox left-right or top-bottom(canvases in the desktop app may be webviews - a browser
+  canvas may be tabbed or stacked on top vertically, swipe up-down will switch through the pages, 
+  left-right between lets say your emails, tasks, notes etc. Switching to a different task would load a
+  new vertical line of canvases. Switching of workspaces would be one more swipe left from Pinned to 
+  Tree to Workspaces. A user willbe able to open a new canvas - doubleclick - tick on the toolbox and 
+  voice-mode tell his canvas-ui agent - show me todays emails and open a pinned canvas to the right with
+  that podcast from yesterday. So, while this run is not a full-fledge UI revamp - we have our "/next"
+  ui skeleton for that - we are essentially building a tiling window manager in browser (nothing new,
+  people did that with jquery years ago) hence should pick components that would not gight the stated 
+  goal. UI should bring you all information you need for a task in a human-readable way, nothing else, 
+  context switches should be as if you'd walk from a perfectly maintained work table with all tools 
+  related to task on that table - to a new worktable related to a new tasks with everything prepared
+
+
 ## Target topology (monorepo + server + services)
 
 ```
