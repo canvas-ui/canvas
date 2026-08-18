@@ -17,6 +17,9 @@
     "bin": {
         "canvas-wallpapers-copy": "./scripts/copy.js"
     },
+    "scripts": {
+        "wallpaper": "node scripts/wallpaper.js"
+    },
     "files": [
         "src",
         "types",

@@ -1,6 +1,6 @@
 // The wallpapers this package ships. Source of truth for both the build-time
-// copy step and the in-app picker — adding a wallpaper means dropping its
-// source into files/, running scripts/derive.sh, and adding an entry here.
+// copy step and the in-app picker — add and remove entries with
+// `node scripts/wallpaper.js`, which keeps files/ and thumbs/ in step.
 //
 // `sources` is ordered best-first: a consumer picks the first format it can
 // render. Paths are relative to wherever the package's `files/` directory was
@@ -8,21 +8,6 @@
 
 /** @type {import('../types/index.js').Wallpaper[]} */
 export const wallpapers = [
-    {
-        id: 'canvas',
-        title: 'Canvas',
-        scheme: 'light',
-        background: '#f2f2f2',
-        accent: '#032940',
-        sources: [
-            { type: 'image/svg+xml', src: 'files/canvas.svg' },
-            { type: 'image/avif', src: 'files/canvas.avif' },
-            { type: 'image/webp', src: 'files/canvas.webp' },
-        ],
-        thumb: 'thumbs/canvas.webp',
-        author: 'Canvas',
-        license: 'LicenseRef-Canvas-Brand',
-    },
     {
         id: 'canvas_1',
         title: 'Canvas Deep',
@@ -35,21 +20,6 @@ export const wallpapers = [
             { type: 'image/webp', src: 'files/canvas_1.webp' },
         ],
         thumb: 'thumbs/canvas_1.webp',
-        author: 'Canvas',
-        license: 'LicenseRef-Canvas-Brand',
-    },
-    {
-        id: 'canvas_2',
-        title: 'Canvas Mono',
-        scheme: 'light',
-        background: '#f2f2f2',
-        accent: '#000000',
-        sources: [
-            { type: 'image/svg+xml', src: 'files/canvas_2.svg' },
-            { type: 'image/avif', src: 'files/canvas_2.avif' },
-            { type: 'image/webp', src: 'files/canvas_2.webp' },
-        ],
-        thumb: 'thumbs/canvas_2.webp',
         author: 'Canvas',
         license: 'LicenseRef-Canvas-Brand',
     },

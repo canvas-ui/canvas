@@ -9,7 +9,7 @@ The artwork in files/ and thumbs/ is NOT covered by that licence. Each entry
 in src/manifest.js carries its own `license` field:
 
   LicenseRef-Canvas-Brand
-    canvas, canvas_1, canvas_2, canvas_3
+    canvas_1, canvas_3
     Canvas brand artwork, (c) 2025 Jozef Melich / augmentd.eu.
     May be redistributed verbatim as part of Canvas. Not licensed for use as
     the branding of a derivative or unrelated product, and not covered by the

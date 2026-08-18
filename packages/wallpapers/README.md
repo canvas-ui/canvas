@@ -11,7 +11,8 @@ own licensing terms separate from the AGPL code around it — see `NOTICE`.
 files/      full-size renditions (svg / avif / webp / jpg)
 thumbs/     480px picker thumbnails (webp)
 src/        the manifest and small URL helpers — no runtime dependencies
-scripts/    derive.sh (regenerate renditions), copy.js (install into an app)
+scripts/    wallpaper.js (add/remove), derive.sh (regenerate renditions),
+            copy.js (install into an app)
 ```
 
 ## Using it from an app
@@ -49,13 +50,25 @@ colour, usable as an instant placeholder behind the image) and `accent` — the
 `frost` theme in particular expects to sit on a wallpaper rather than a flat
 desk colour.
 
-## Adding a wallpaper
+## Adding and removing wallpapers
 
-1. Drop the source into `files/` — a `.svg` if the artwork is vector, otherwise
-   a high-resolution `.jpg`. Both are the checked-in originals; every other
-   rendition is derived.
-2. Run `scripts/derive.sh` (needs `rsvg-convert` and ImageMagick 7 with AVIF and
-   WebP support). It writes the 2560px AVIF/WebP renditions and the thumbnail.
-3. Add the entry to `src/manifest.js`, including a real `author` and `license`.
+```
+node scripts/wallpaper.js add ~/Pictures/aurora.jpg
+node scripts/wallpaper.js remove aurora
+```
 
-Keep the set small — these files ship in every build.
+`add` prompts for everything an entry needs — id, title, which scheme it suits,
+its dominant and accent colours (the dominant one is detected from the image and
+offered as the default), and the attribution: author, source URL and licence. It
+then renders the renditions and writes the manifest entry, so files, thumbnails
+and manifest cannot drift apart. `remove` deletes an id's files and its entry.
+
+Vector sources are kept as `.svg`; anything else is stored as a `.jpg` — those
+are the two source kinds `derive.sh` renders from. Both are the checked-in
+originals, and every other rendition is derived, so re-running `derive.sh` after
+changing the encoder settings regenerates the lot. It needs `rsvg-convert` and
+ImageMagick 7 with AVIF and WebP support.
+
+Two things the script deliberately leaves to a human: prose licence terms go in
+`NOTICE` (the script reminds you when the author isn't us), and keeping the set
+small — these files ship in every build.
