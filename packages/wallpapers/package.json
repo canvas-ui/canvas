@@ -1,0 +1,36 @@
+{
+    "name": "@augmentd-labs/canvas-wallpapers",
+    "version": "0.1.0",
+    "description": "Wallpapers shipped with Canvas UIs, plus the manifest describing them",
+    "license": "AGPL-3.0-or-later",
+    "author": "Jozef Melich <me@idnc.sk>",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./types/index.d.ts",
+            "default": "./src/index.js"
+        },
+        "./files/*": "./files/*",
+        "./thumbs/*": "./thumbs/*",
+        "./package.json": "./package.json"
+    },
+    "bin": {
+        "canvas-wallpapers-copy": "./scripts/copy.mjs"
+    },
+    "files": [
+        "src",
+        "types",
+        "files",
+        "thumbs",
+        "scripts",
+        "NOTICE"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/canvas-ui/canvas.git",
+        "directory": "packages/wallpapers"
+    }
+}

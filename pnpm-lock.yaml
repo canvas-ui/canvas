@@ -203,6 +203,9 @@ importers:
       '@augmentd-labs/canvas-protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@augmentd-labs/canvas-wallpapers':
+        specifier: workspace:*
+        version: link:../../packages/wallpapers
       '@codemirror/lang-javascript':
         specifier: ^6.2.5
         version: 6.2.5
@@ -376,6 +379,8 @@ importers:
   packages/protocol: {}
 
   packages/schemas: {}
+
+  packages/wallpapers: {}
 
 packages:
 
