@@ -80,7 +80,8 @@ export const wallpapers = [
             { type: 'image/jpeg', src: 'files/w1.jpg' },
         ],
         thumb: 'thumbs/w1.webp',
-        author: 'Unknown',
-        license: 'LicenseRef-Unverified',
+        author: 'Peter Cui Bide',
+        source: 'https://petercui.deviantart.com',
+        license: 'LicenseRef-Attribution-Only',
     },
-]
+];

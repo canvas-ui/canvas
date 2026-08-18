@@ -15,10 +15,11 @@ in src/manifest.js carries its own `license` field:
     the branding of a derivative or unrelated product, and not covered by the
     AGPL grant that applies to the surrounding code.
 
-  LicenseRef-Unverified
+  LicenseRef-Attribution-Only
     w1 ("Frost")
-    Provenance not established. Supplied as a stock/free wallpaper with no
-    recorded author, licence, or source URL.
-    ACTION REQUIRED before this package is published or shipped in a public
-    build: confirm the licence and record the author and source URL here and
-    in src/manifest.js, or replace the file with artwork of known provenance.
+    (c) Peter Cui Bide, https://petercui.deviantart.com — the artist's
+    copyright notice is watermarked into the image itself. Bundled with
+    attribution, credited in the app's wallpaper picker and here.
+    No written redistribution permission is on file. If the artist's terms turn
+    out to disallow bundling in a distributed product, replace the file and
+    drop its entry from src/manifest.js.

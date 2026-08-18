@@ -1,16 +1,16 @@
-import { wallpapers } from './manifest.js'
+import { wallpapers } from './manifest.js';
 
-export { wallpapers }
+export { wallpapers };
 
 /**
  * Where apps are expected to serve the copied `files/` and `thumbs/`
- * directories from. `scripts/copy.mjs` defaults to `<public>/wallpapers`.
+ * directories from. `scripts/copy.js` defaults to `<public>/wallpapers`.
  */
-export const BASE_PATH = '/wallpapers'
+export const BASE_PATH = '/wallpapers';
 
 /** @returns {import('../types/index.js').Wallpaper | undefined} */
 export function getWallpaper(id) {
-    return wallpapers.find((wallpaper) => wallpaper.id === id)
+    return wallpapers.find((wallpaper) => wallpaper.id === id);
 }
 
 /**
@@ -22,16 +22,16 @@ export function getWallpaper(id) {
  * @param {{ base?: string, types?: string[] }} [options]
  */
 export function wallpaperUrl(wallpaper, options = {}) {
-    const entry = typeof wallpaper === 'string' ? getWallpaper(wallpaper) : wallpaper
-    if (!entry) return null
-    const { base = BASE_PATH, types } = options
+    const entry = typeof wallpaper === 'string' ? getWallpaper(wallpaper) : wallpaper;
+    if (!entry) return null;
+    const { base = BASE_PATH, types } = options;
     const source = (types ? entry.sources.find((s) => types.includes(s.type)) : entry.sources[0])
-        ?? entry.sources[entry.sources.length - 1]
-    return `${base.replace(/\/$/, '')}/${source.src}`
+        ?? entry.sources[entry.sources.length - 1];
+    return `${base.replace(/\/$/, '')}/${source.src}`;
 }
 
 /** URL of the small picker thumbnail. */
 export function wallpaperThumbUrl(wallpaper, base = BASE_PATH) {
-    const entry = typeof wallpaper === 'string' ? getWallpaper(wallpaper) : wallpaper
-    return entry ? `${base.replace(/\/$/, '')}/${entry.thumb}` : null
+    const entry = typeof wallpaper === 'string' ? getWallpaper(wallpaper) : wallpaper;
+    return entry ? `${base.replace(/\/$/, '')}/${entry.thumb}` : null;
 }

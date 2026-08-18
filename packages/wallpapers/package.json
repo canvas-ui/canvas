@@ -15,7 +15,7 @@
         "./package.json": "./package.json"
     },
     "bin": {
-        "canvas-wallpapers-copy": "./scripts/copy.mjs"
+        "canvas-wallpapers-copy": "./scripts/copy.js"
     },
     "files": [
         "src",

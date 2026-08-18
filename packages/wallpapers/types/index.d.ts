@@ -21,6 +21,8 @@ export interface Wallpaper {
     /** Path to the picker thumbnail, relative to the copied package root. */
     thumb: string
     author: string
+    /** Where the artwork came from, for third-party work. */
+    source?: string
     /** SPDX id, or a `LicenseRef-` key documented in NOTICE. */
     license: string
 }

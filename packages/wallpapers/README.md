@@ -11,7 +11,7 @@ own licensing terms separate from the AGPL code around it — see `NOTICE`.
 files/      full-size renditions (svg / avif / webp / jpg)
 thumbs/     480px picker thumbnails (webp)
 src/        the manifest and small URL helpers — no runtime dependencies
-scripts/    derive.sh (regenerate renditions), copy.mjs (install into an app)
+scripts/    derive.sh (regenerate renditions), copy.js (install into an app)
 ```
 
 ## Using it from an app
