@@ -1,9 +1,22 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/canvas-ai/.github/main/banners/canvas-banner_1200x480.jpg" alt="Canvas" width="100%" />
+</p>
+
 # Canvas
 
-Monorepo for the Canvas open layer: client apps and the shared packages they
+Monorepo for the Canvas UI(OS) client apps and the shared packages they
 are built on. The server ([canvas-server](https://github.com/canvas-ui/canvas-server))
-stays in its own repository and consumes the shared packages; the master
-migration plan lives there in `TODO.monorepo-migration.md`.
+lives in its own repository and consumes the shared packages
+
+## Project screenshots
+
+- https://demo.cnvs.ai/pub/c/aks6zaf8
+
+
+## Demo instance
+
+- https://demo.cnvs.ai/
+- demo@canvas.local
 
 ## Layout
 
