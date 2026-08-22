@@ -1,0 +1,10 @@
+{
+  "name": "canvas-web",
+  "version": "2.7.58",
+  "description": "Prebuilt Canvas web UI — published by scripts/update-releases.sh (web-dist branch)",
+  "license": "AGPL-3.0-or-later",
+  "files": [
+    "dist"
+  ],
+  "canvasRev": "7855c34"
+}
