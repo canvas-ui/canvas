@@ -35,6 +35,11 @@ integrations/
   kde                    desktop share bridge: Dolphin "Send to Canvas" + selected-text capture
 ```
 
+- [`apps/cli`](apps/cli/README.md) — Canvas CLI (bun-compiled binaries)
+- [`apps/desktop`](apps/desktop/README.md) — Tauri desktop app
+- [`apps/browser-extension`](apps/browser-extension/README.md) — Chromium + Firefox extension
+- [`apps/web`](apps/web/README.md) — web UI (vite/react)
+
 ## Development
 
 ```bash
