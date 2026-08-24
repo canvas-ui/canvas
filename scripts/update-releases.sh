@@ -190,13 +190,17 @@ if $AUTOBUMP && [[ -z "$BUMP" ]]; then
             say "--autobump: $cur_tag is not released yet — releasing $cur as-is, no bump"
         else
             paths=$(watch_paths "$APP_DIR") || die "--autobump: could not resolve watch paths for $APP_DIR"
+            # Markdown never ships in a binary, so a README or RELEASE.md edit
+            # must not cut a release — 2.1.11 was published by a docs commit
+            # before this exclusion existed. A commit touching both docs and
+            # code still counts: the pathspec drops files, not commits.
             # shellcheck disable=SC2086 — $paths is a deliberate multi-path list
-            changed=$(git log --oneline "$cur_tag..HEAD" -- $paths | wc -l)
+            changed=$(git log --oneline "$cur_tag..HEAD" -- $paths ':(exclude)*.md' | wc -l)
             if [[ "$changed" -gt 0 ]]; then
                 BUMP="patch"
-                say "--autobump: $changed commit(s) under [$paths] since $cur_tag → patch bump"
+                say "--autobump: $changed non-docs commit(s) under [$paths] since $cur_tag → patch bump"
             else
-                say "--autobump: nothing changed under [$paths] since $cur_tag — nothing to release"
+                say "--autobump: nothing but docs (if anything) changed under [$paths] since $cur_tag — nothing to release"
             fi
         fi
     fi
