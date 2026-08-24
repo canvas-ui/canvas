@@ -26,7 +26,13 @@ permissions:
 
 concurrency:
   group: auto-release
-  cancel-in-progress: true
+  # NOT cancel-in-progress: a run that auto-bumps pushes its own commit to
+  # main, which starts a newer run that would cancel the one mid-release.
+  # Observed on cli-v2.1.11: the bumping run finished as "cancelled" and only
+  # got away with it because the tag was already pushed. Cancelled a second
+  # earlier and main would carry a bump with no tag behind it. Runs are
+  # already idempotent (--skip-existing, and web's branch push is a force
+  # push), so queueing costs ~40s and risks nothing.
 
 jobs:
   release-all:
