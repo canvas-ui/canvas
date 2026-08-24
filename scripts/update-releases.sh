@@ -212,11 +212,16 @@ if [[ -n "$BUMP" ]]; then
     # asserts all three agree — bump them together or the tag fails CI.
     if [[ "$APP" == "extension" ]]; then
         for f in manifest-chromium.json manifest-firefox.json; do
+            # Rewrite the version string in place. A JSON round-trip would
+            # reformat the file (these manifests use blank-line grouping that
+            # JSON.stringify discards) and bury the one-line bump in noise.
             node -e "
 const fs = require('fs'), p = '$APP_DIR/$f';
-const m = JSON.parse(fs.readFileSync(p, 'utf8'));
-m.version = '$ver';
-fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
+const src = fs.readFileSync(p, 'utf8');
+const out = src.replace(/(\"version\"\s*:\s*\")[^\"]+(\")/, \`\$1$ver\$2\`);
+if (out === src) { console.error('no version field rewritten in ' + p); process.exit(1); }
+if (JSON.parse(out).version !== '$ver') { console.error('version rewrite failed in ' + p); process.exit(1); }
+fs.writeFileSync(p, out);
 " || die "failed to bump $f"
             git add "$APP_DIR/$f"
         done
@@ -239,6 +244,16 @@ push_main_if_needed() {
 
 # ── Mode: ci-tag (cli, desktop, extension) — CI builds, we only tag ──────────
 if [[ "$MODE" == "ci-tag" ]]; then
+    # release.yml re-asserts these, but it does so AFTER the tag is pushed —
+    # which is how extension-v3.1.1 came to exist with no release behind it
+    # (package.json was bumped by hand, both manifests left a version behind).
+    # Fail here instead, while the tag is still just an idea.
+    if [[ "$APP" == "extension" ]]; then
+        for f in manifest-chromium.json manifest-firefox.json; do
+            mv=$(node -p "require('./$APP_DIR/$f').version")
+            [[ "$mv" == "$ver" ]] || die "$f is $mv but package.json is $ver — re-run with --bump to sync all three, or fix $f by hand; tagging now would fail CI after the tag is public"
+        done
+    fi
     if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
         $SKIP_EXISTING && { say "$APP $ver already released ($tag exists) — skipping"; exit 0; }
         die "tag $tag already exists — bump first (--bump patch)"
