@@ -20,9 +20,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run test
-      - run: pnpm --filter @augmentd-labs/canvas-cli run build:dev
-      - run: ./apps/cli/dist/canvas-dev --version
-      - run: ./apps/cli/dist/canvas-dev --help
+      # Build every shipped target on every PR, not just the dev binary: bun
+      # cross-compiles all five from this one Linux runner in well under a
+      # minute, and building them only at tag time meant a broken target was
+      # discovered during a release instead of during review.
+      - name: Build CLI binaries (all release targets)
+        run: |
+          pnpm --filter @augmentd-labs/canvas-cli run build:linux
+          pnpm --filter @augmentd-labs/canvas-cli run build:linux-arm
+          pnpm --filter @augmentd-labs/canvas-cli run build:macos
+          pnpm --filter @augmentd-labs/canvas-cli run build:macos-arm
+          pnpm --filter @augmentd-labs/canvas-cli run build:windows
+      - name: Verify CLI binaries
+        run: bash apps/cli/scripts/verify-binaries.sh "$(node -p "require('./apps/cli/package.json').version")"
       # Frontend builds only; the Tauri (Rust) bundle needs its own toolchain
       # and is not part of this pipeline yet.
       - run: pnpm --filter canvas-desktop run build

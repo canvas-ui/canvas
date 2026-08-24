@@ -10,6 +10,8 @@
 #
 #   any of the above -- --bump patch|minor|major   bump the app version first (committed)
 #   web only        -- --tag                       ALSO tag web-v<ver> (pinned tarball via CI)
+#   any             -- --autobump                   patch-bump apps in AUTOBUMP_APPS when their
+#                                                  code changed since their last release tag
 #   any             -- --no-push                   stop before pushing, print what would run
 #   any             -- --allow-dirty               skip the clean-tree check (hacking only)
 #
@@ -39,6 +41,7 @@ APP="${1:-}"
 shift
 
 BUMP=""
+AUTOBUMP=false
 TAG=false
 PUSH=true
 ALLOW_DIRTY=false
@@ -50,6 +53,7 @@ while [[ $# -gt 0 ]]; do
         --no-push) PUSH=false; shift ;;
         --allow-dirty) ALLOW_DIRTY=true; shift ;;
         --skip-existing) SKIP_EXISTING=true; shift ;;
+        --autobump) AUTOBUMP=true; shift ;;
         -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) die "unknown argument '$1' (see --help)" ;;
     esac
@@ -70,6 +74,7 @@ if [[ "$APP" == "all" ]]; then
         say "── $app ─────────────────────────────"
         bash "$0" "$app" --skip-existing --allow-dirty \
             $($PUSH || echo --no-push) \
+            $($AUTOBUMP && echo --autobump) \
             ${BUMP:+--bump "$BUMP"} || rc=1
     done
     [[ $rc -eq 0 ]] && say "release:all complete" || die "release:all finished with failures (see above)"
@@ -115,6 +120,72 @@ fi
 
 command -v corepack >/dev/null || die "corepack not found (ships with node >= 16.9)"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+# ── Auto-bump (--autobump) ───────────────────────────────────────────────────
+# The migration left the CLI stuck: its version was never bumped after
+# cli-v2.1.9, so `release:all` skipped it on every push and no binaries were
+# ever published again. This closes that hole — if an app's current version is
+# already tagged AND its code (or a workspace package it depends on) changed
+# since that tag, patch-bump it so the release actually happens.
+#
+# Opt-in per app via AUTOBUMP_APPS (space-separated). Only the CLI is in it by
+# default: desktop would fire a 3-OS Tauri build on every touch, and web has no
+# version gate at all (its branch republishes every push regardless).
+AUTOBUMP_APPS="${AUTOBUMP_APPS:-cli}"
+
+# Every path whose changes should count as "this app changed": the app dir plus
+# the directories of the workspace:* packages it depends on, transitively.
+watch_paths() {
+    node -e '
+const fs = require("fs"), path = require("path");
+const appDir = process.argv[1];
+const roots = ["packages", "integrations", "apps"];
+const byName = new Map();
+for (const root of roots) {
+  if (!fs.existsSync(root)) continue;
+  for (const d of fs.readdirSync(root)) {
+    const p = path.join(root, d, "package.json");
+    if (!fs.existsSync(p)) continue;
+    try { byName.set(JSON.parse(fs.readFileSync(p, "utf8")).name, path.join(root, d)); } catch {}
+  }
+}
+const out = new Set([appDir]);
+const queue = [appDir];
+while (queue.length) {
+  const dir = queue.shift();
+  let pkg;
+  try { pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")); } catch { continue; }
+  for (const [name, spec] of Object.entries({ ...pkg.dependencies, ...pkg.devDependencies })) {
+    if (!String(spec).startsWith("workspace:")) continue;
+    const d = byName.get(name);
+    if (d && !out.has(d)) { out.add(d); queue.push(d); }
+  }
+}
+console.log([...out].join(" "));
+' "$1"
+}
+
+if $AUTOBUMP && [[ -z "$BUMP" ]]; then
+    if [[ " $AUTOBUMP_APPS " != *" $APP "* ]]; then
+        say "--autobump: '$APP' not in AUTOBUMP_APPS ('$AUTOBUMP_APPS') — leaving its version alone"
+    else
+        cur=$(node -p "require('./$APP_DIR/package.json').version")
+        cur_tag="$TAG_PREFIX$cur"
+        if ! git rev-parse -q --verify "refs/tags/$cur_tag" >/dev/null; then
+            say "--autobump: $cur_tag is not released yet — releasing $cur as-is, no bump"
+        else
+            paths=$(watch_paths "$APP_DIR") || die "--autobump: could not resolve watch paths for $APP_DIR"
+            # shellcheck disable=SC2086 — $paths is a deliberate multi-path list
+            changed=$(git log --oneline "$cur_tag..HEAD" -- $paths | wc -l)
+            if [[ "$changed" -gt 0 ]]; then
+                BUMP="patch"
+                say "--autobump: $changed commit(s) under [$paths] since $cur_tag → patch bump"
+            else
+                say "--autobump: nothing changed under [$paths] since $cur_tag — nothing to release"
+            fi
+        fi
+    fi
+fi
 
 # ── Optional version bump ────────────────────────────────────────────────────
 if [[ -n "$BUMP" ]]; then

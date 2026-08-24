@@ -90,6 +90,10 @@ jobs:
           pnpm --filter @augmentd-labs/canvas-cli run build:macos
           pnpm --filter @augmentd-labs/canvas-cli run build:macos-arm
           pnpm --filter @augmentd-labs/canvas-cli run build:windows
+      # Never attach a binary that doesn't start or reports the wrong version.
+      # Same script ci.yml runs, so a green PR means a releasable build.
+      - name: Verify binaries
+        run: bash apps/cli/scripts/verify-binaries.sh "${GITHUB_REF_NAME#cli-v}"
       - name: Checksums
         run: cd apps/cli/dist && sha256sum canvas-* > SHA256SUMS
       - uses: softprops/action-gh-release@v2
@@ -123,6 +127,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
         run: |
+          # No token configured (the repo has no NPM_TOKEN today) — skip
+          # rather than fail. The binaries above are already released; a
+          # missing registry credential must not paint the release red. Add
+          # the secret and the very next tag publishes, no workflow edit.
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning title=npm publish skipped::NPM_TOKEN is not set — GitHub Release binaries were published, npm packages were not."
+            exit 0
+          fi
           for dir in packages/protocol packages/schemas packages/api-client apps/cli; do
             name=$(node -p "require('./$dir/package.json').name")
             ver=$(node -p "require('./$dir/package.json').version")

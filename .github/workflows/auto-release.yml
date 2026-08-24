@@ -4,10 +4,15 @@
 #   web        rebuilt and force-published to the web-dist branch every push
 #              (deployments re-resolve the branch on their next update)
 #   extension  tagged when its version has no tag yet → release.yml builds
-#   cli        tagged when its version has no tag yet → release.yml builds
+#   cli        auto patch-bumped (--autobump) whenever apps/cli or a workspace
+#              package it depends on changed since the last cli-v tag, then
+#              tagged → release.yml builds and attaches the binaries
 #   desktop    tagged when its version has no tag yet → release.yml builds
 # So: bump an app's version in a push and its release happens by itself;
-# push without a bump and only the web (version-less branch artifact) moves.
+# push without a bump and only the web (version-less branch artifact) moves —
+# except the CLI, which bumps itself when its code moved (AUTOBUMP_APPS in
+# scripts/update-releases.sh). That auto-bump is a commit pushed to main; the
+# push it causes re-runs this workflow once, finds nothing new, and stops.
 name: auto-release
 
 on:
@@ -36,7 +41,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: bash scripts/update-releases.sh all
+      - run: bash scripts/update-releases.sh all --autobump
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
