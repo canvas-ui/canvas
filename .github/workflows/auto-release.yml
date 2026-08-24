@@ -36,6 +36,14 @@ jobs:
         with:
           ref: main # a real branch checkout — the script refuses detached HEAD
           fetch-depth: 0 # full history + tags: skip-existing checks need them
+          # --autobump pushes a version-bump commit to main, which is
+          # protected by a required `cla` status check. Admins bypass it
+          # (enforce_admins is off) but github-actions[bot] does not, so that
+          # push may be rejected. If it is, add a RELEASE_TOKEN secret (a PAT
+          # from an admin with contents:write) and it is used automatically —
+          # no workflow edit. A PAT-pushed tag also triggers release.yml
+          # directly, making the explicit dispatch below a harmless no-op.
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -43,5 +51,5 @@ jobs:
           cache: pnpm
       - run: bash scripts/update-releases.sh all --autobump
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}

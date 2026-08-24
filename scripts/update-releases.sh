@@ -121,6 +121,21 @@ fi
 command -v corepack >/dev/null || die "corepack not found (ships with node >= 16.9)"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
+# ── Commit identity ──────────────────────────────────────────────────────────
+# GitHub runners have no git identity and actions/checkout does not set one, so
+# any commit this script makes there fails with "Please tell me who you are".
+# That went unnoticed until --autobump made CI commit for the first time (the
+# web branch-mode commit carries its own -c flags, and version bumps used to
+# happen only on a maintainer's machine). Fall back to the Actions bot only
+# when the environment genuinely has no identity — a local run keeps yours.
+if ! git config user.email >/dev/null 2>&1; then
+    export GIT_AUTHOR_NAME="github-actions[bot]"
+    export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+    export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+    export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+    say "no git identity configured — committing as $GIT_AUTHOR_NAME"
+fi
+
 # ── Auto-bump (--autobump) ───────────────────────────────────────────────────
 # The migration left the CLI stuck: its version was never bumped after
 # cli-v2.1.9, so `release:all` skipped it on every push and no binaries were
