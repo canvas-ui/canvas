@@ -143,7 +143,7 @@ opt-in `pruneRemoved: true` per backend; after a clean container sync the
 service compares a FULL source traversal (`driver.listIdentities(container)`
 → every current provenance URL) against the mirror and hands source-deleted
 docs to `WorkspaceStoredIndex.reconcileRemovedLocations` (orphan-not-delete:
-locations dropped, mirror paths unticked, `data/no-location` + `orphanedAt`,
+locations dropped, mirror paths unticked, empty locations + `orphanedAt` (engine ticks `feature/orphaned`),
 purged later by retention GC). The service side is fully generic — each
 remaining driver only needs `listIdentities` (throw on ANY API error: a
 partial listing must never masquerade as complete). Contract + guard rails:
