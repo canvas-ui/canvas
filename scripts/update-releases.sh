@@ -10,27 +10,27 @@
 #
 #   any of the above -- --bump patch|minor|major   bump the app version first (committed)
 #   web only        -- --tag                       ALSO tag web-v<ver> (pinned tarball via CI)
-#   any             -- --autobump                   patch-bump apps in AUTOBUMP_APPS when their
-#                                                  code changed since their last release tag
+#   any             -- --if-needed                 skip if nothing shipped since last release;
+#                                                  patch-bump tagged apps whose code moved
 #   any             -- --no-push                   stop before pushing, print what would run
+#   any             -- --dry-run                   print the plan, change nothing
 #   any             -- --allow-dirty               skip the clean-tree check (hacking only)
 #
 # Per-app release modes (why they differ):
 #   web        local build → force-push { package.json, dist/ } to the `web-dist`
 #              branch. canvas-server consumes it as
 #              "canvas-web": "github:canvas-ui/canvas#web-dist" and re-resolves
-#              on every deployment update — a push here updates every instance.
-#   extension  tag extension-v<ver> + push — release.yml builds both zips on a
-#              clean runner and attaches them. (It used to build locally and
-#              upload from the maintainer's machine; CI builds it now, so the
-#              artifact that reaches the browser stores is reproducible.)
+#              on every `npm update canvas-web`.
+#   extension  tag extension-v<ver> + push — release.yml builds both zips.
 #   cli        tag cli-v<ver> + push — release.yml builds and publishes.
 #   desktop    tag desktop-v<ver> + push — release.yml builds (needs CI's
 #              multi-OS runners; deliberately NOT built locally).
 #
+# CI never bumps a version and never writes to main. This script is the writer;
+# release.yml is the builder, triggered by the tags this pushes.
+#
 # Design constraints: non-interactive, deterministic, one loud line per step,
-# every failure names its cause and exits non-zero — safe to hand to a cron
-# job or a small supervising model.
+# every failure names its cause and exits non-zero.
 set -euo pipefail
 
 say() { echo "[release $(date '+%H:%M:%S')] $1"; }
@@ -41,9 +41,10 @@ APP="${1:-}"
 shift
 
 BUMP=""
-AUTOBUMP=false
+IF_NEEDED=false
 TAG=false
 PUSH=true
+DRY_RUN=false
 ALLOW_DIRTY=false
 SKIP_EXISTING=false
 while [[ $# -gt 0 ]]; do
@@ -51,22 +52,23 @@ while [[ $# -gt 0 ]]; do
         --bump) BUMP="${2:-}"; shift 2 ;;
         --tag) TAG=true; shift ;;
         --no-push) PUSH=false; shift ;;
+        --dry-run) DRY_RUN=true; shift ;;
         --allow-dirty) ALLOW_DIRTY=true; shift ;;
         --skip-existing) SKIP_EXISTING=true; shift ;;
-        --autobump) AUTOBUMP=true; shift ;;
+        --if-needed|--autobump) IF_NEEDED=true; shift ;;
         -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) die "unknown argument '$1' (see --help)" ;;
     esac
 done
 
 # ── `all`: every app in sequence ─────────────────────────────────────────────
-# web republishes unconditionally (the branch is idempotent); tagged apps skip
-# when their current version is already released — so `release:all` after a
-# few webui commits updates the web and touches nothing else.
+# Tagged apps skip when their current version is already released. Without
+# --if-needed, web always republishes (the branch is idempotent). With
+# --if-needed, web skips too unless something shippable moved.
 if [[ "$APP" == "all" ]]; then
     # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
     # files (theme fallbacks etc.), which must not fail the apps after them.
-    if ! $ALLOW_DIRTY && ! git diff-index --quiet HEAD --; then
+    if ! $DRY_RUN && ! $ALLOW_DIRTY && ! git diff-index --quiet HEAD --; then
         die "working tree has uncommitted changes — commit them or pass --allow-dirty"
     fi
     rc=0
@@ -74,7 +76,8 @@ if [[ "$APP" == "all" ]]; then
         say "── $app ─────────────────────────────"
         bash "$0" "$app" --skip-existing --allow-dirty \
             $($PUSH || echo --no-push) \
-            $($AUTOBUMP && echo --autobump) \
+            $($DRY_RUN && echo --dry-run) \
+            $($IF_NEEDED && echo --if-needed) \
             ${BUMP:+--bump "$BUMP"} || rc=1
     done
     [[ $rc -eq 0 ]] && say "release:all complete" || die "release:all finished with failures (see above)"
@@ -98,12 +101,13 @@ cd "$ROOT"
 branch=$(git branch --show-current)
 [[ "$branch" == "main" ]] || die "on branch '$branch' — releases publish from main only"
 
-if ! $ALLOW_DIRTY && ! git diff-index --quiet HEAD --; then
+if ! $DRY_RUN && ! $ALLOW_DIRTY && ! git diff-index --quiet HEAD --; then
     die "working tree has uncommitted changes — commit them or pass --allow-dirty"
 fi
 
-say "Fetching origin/main..."
+say "Fetching origin/main and tags..."
 git fetch origin main --quiet || die "git fetch failed — no network?"
+git fetch origin --tags --quiet || true
 local_sha=$(git rev-parse main)
 remote_sha=$(git rev-parse origin/main)
 if [[ "$local_sha" != "$remote_sha" ]]; then
@@ -122,12 +126,8 @@ command -v corepack >/dev/null || die "corepack not found (ships with node >= 16
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 # ── Commit identity ──────────────────────────────────────────────────────────
-# GitHub runners have no git identity and actions/checkout does not set one, so
-# any commit this script makes there fails with "Please tell me who you are".
-# That went unnoticed until --autobump made CI commit for the first time (the
-# web branch-mode commit carries its own -c flags, and version bumps used to
-# happen only on a maintainer's machine). Fall back to the Actions bot only
-# when the environment genuinely has no identity — a local run keeps yours.
+# Fall back to the Actions bot only when the environment has no identity — a
+# local run keeps yours. Needed because a version bump is a real commit.
 if ! git config user.email >/dev/null 2>&1; then
     export GIT_AUTHOR_NAME="github-actions[bot]"
     export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
@@ -135,18 +135,6 @@ if ! git config user.email >/dev/null 2>&1; then
     export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
     say "no git identity configured — committing as $GIT_AUTHOR_NAME"
 fi
-
-# ── Auto-bump (--autobump) ───────────────────────────────────────────────────
-# The migration left the CLI stuck: its version was never bumped after
-# cli-v2.1.9, so `release:all` skipped it on every push and no binaries were
-# ever published again. This closes that hole — if an app's current version is
-# already tagged AND its code (or a workspace package it depends on) changed
-# since that tag, patch-bump it so the release actually happens.
-#
-# Opt-in per app via AUTOBUMP_APPS (space-separated). Only the CLI is in it by
-# default: desktop would fire a 3-OS Tauri build on every touch, and web has no
-# version gate at all (its branch republishes every push regardless).
-AUTOBUMP_APPS="${AUTOBUMP_APPS:-cli}"
 
 # Every path whose changes should count as "this app changed": the app dir plus
 # the directories of the workspace:* packages it depends on, transitively.
@@ -180,30 +168,59 @@ console.log([...out].join(" "));
 ' "$1"
 }
 
-if $AUTOBUMP && [[ -z "$BUMP" ]]; then
-    if [[ " $AUTOBUMP_APPS " != *" $APP "* ]]; then
-        say "--autobump: '$APP' not in AUTOBUMP_APPS ('$AUTOBUMP_APPS') — leaving its version alone"
+# Non-docs commits under the app's watch paths since $1 (a tag or a commit).
+# Markdown never ships in a binary, so a README edit must not cut a release —
+# 2.1.11 was published by a docs commit before this exclusion existed.
+commits_since() {
+    local since=$1
+    local paths
+    paths=$(watch_paths "$APP_DIR") || die "could not resolve watch paths for $APP_DIR"
+    # shellcheck disable=SC2086
+    git log --oneline "$since..HEAD" -- $paths ':(exclude)*.md' | wc -l
+}
+
+# ── --if-needed: skip or patch-bump from "did anything shippable move?" ──────
+if $IF_NEEDED && [[ -z "$BUMP" ]]; then
+    cur=$(node -p "require('./$APP_DIR/package.json').version")
+    if [[ "$MODE" == "branch" ]]; then
+        git fetch origin web-dist --quiet || true
+        published=$(git show origin/web-dist:package.json 2>/dev/null \
+            | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{process.stdout.write(JSON.parse(d).canvasRev||'')}catch{}})")
+        if [[ -n "$published" ]] && git rev-parse --verify "${published}^{commit}" >/dev/null 2>&1; then
+            n=$(commits_since "$published")
+            if [[ "$n" -eq 0 ]]; then
+                say "--if-needed: web-dist already has $published and nothing shippable moved — skipping"
+                exit 0
+            fi
+            say "--if-needed: $n non-docs commit(s) since web-dist@$published — republishing"
+        else
+            say "--if-needed: no readable canvasRev on origin/web-dist — publishing"
+        fi
     else
-        cur=$(node -p "require('./$APP_DIR/package.json').version")
         cur_tag="$TAG_PREFIX$cur"
         if ! git rev-parse -q --verify "refs/tags/$cur_tag" >/dev/null; then
-            say "--autobump: $cur_tag is not released yet — releasing $cur as-is, no bump"
+            say "--if-needed: $cur_tag is not released yet — releasing $cur as-is"
         else
-            paths=$(watch_paths "$APP_DIR") || die "--autobump: could not resolve watch paths for $APP_DIR"
-            # Markdown never ships in a binary, so a README or RELEASE.md edit
-            # must not cut a release — 2.1.11 was published by a docs commit
-            # before this exclusion existed. A commit touching both docs and
-            # code still counts: the pathspec drops files, not commits.
-            # shellcheck disable=SC2086 — $paths is a deliberate multi-path list
-            changed=$(git log --oneline "$cur_tag..HEAD" -- $paths ':(exclude)*.md' | wc -l)
-            if [[ "$changed" -gt 0 ]]; then
+            n=$(commits_since "$cur_tag")
+            if [[ "$n" -gt 0 ]]; then
                 BUMP="patch"
-                say "--autobump: $changed non-docs commit(s) under [$paths] since $cur_tag → patch bump"
+                say "--if-needed: $n non-docs commit(s) since $cur_tag → patch bump"
             else
-                say "--autobump: nothing but docs (if anything) changed under [$paths] since $cur_tag — nothing to release"
+                say "--if-needed: nothing shippable moved since $cur_tag — skipping"
+                exit 0
             fi
         fi
     fi
+fi
+
+if $DRY_RUN; then
+    cur=$(node -p "require('./$APP_DIR/package.json').version")
+    if [[ -n "$BUMP" ]]; then
+        say "--dry-run: would bump $BUMP from $cur and release $APP"
+    else
+        say "--dry-run: would release $APP $cur"
+    fi
+    exit 0
 fi
 
 # ── Optional version bump ────────────────────────────────────────────────────
@@ -212,24 +229,41 @@ if [[ -n "$BUMP" ]]; then
     ( cd "$APP_DIR" && npm version "$BUMP" --no-git-tag-version >/dev/null ) || die "version bump failed"
     ver=$(node -p "require('./$APP_DIR/package.json').version")
     git add "$APP_DIR/package.json"
-    # The extension carries the version in two more places, and release.yml
-    # asserts all three agree — bump them together or the tag fails CI.
-    if [[ "$APP" == "extension" ]]; then
-        for f in manifest-chromium.json manifest-firefox.json; do
-            # Rewrite the version string in place. A JSON round-trip would
-            # reformat the file (these manifests use blank-line grouping that
-            # JSON.stringify discards) and bury the one-line bump in noise.
-            node -e "
-const fs = require('fs'), p = '$APP_DIR/$f';
-const src = fs.readFileSync(p, 'utf8');
-const out = src.replace(/(\"version\"\s*:\s*\")[^\"]+(\")/, \`\$1$ver\$2\`);
-if (out === src) { console.error('no version field rewritten in ' + p); process.exit(1); }
-if (JSON.parse(out).version !== '$ver') { console.error('version rewrite failed in ' + p); process.exit(1); }
+    # Sidecar files that release.yml asserts against the tag. A JSON round-trip
+    # would reformat (blank-line grouping); rewrite the version string in place.
+    rewrite_json_version() {
+        local file=$1
+        FILE=$file VER=$ver node -e '
+const fs = require("fs");
+const p = process.env.FILE, v = process.env.VER;
+const src = fs.readFileSync(p, "utf8");
+const out = src.replace(/("version"\s*:\s*")[^"]+(")/, `$1${v}$2`);
+if (out === src) { console.error("no version field rewritten in " + p); process.exit(1); }
+if (JSON.parse(out).version !== v) { console.error("version rewrite failed in " + p); process.exit(1); }
 fs.writeFileSync(p, out);
-" || die "failed to bump $f"
-            git add "$APP_DIR/$f"
-        done
+' || die "failed to bump $file"
+        git add "$file"
+    }
+    if [[ "$APP" == "extension" ]]; then
+        rewrite_json_version "$APP_DIR/manifest-chromium.json"
+        rewrite_json_version "$APP_DIR/manifest-firefox.json"
         say "Synced $ver into both extension manifests"
+    fi
+    if [[ "$APP" == "desktop" ]]; then
+        rewrite_json_version "$APP_DIR/src-tauri/tauri.conf.json"
+        # Cargo.toml [package] version, first match only — later [[package]]
+        # deps in the lockfile are a different file.
+        sed -i "0,/^version = \".*\"/{s/^version = \".*\"/version = \"$ver\"/}" \
+            "$APP_DIR/src-tauri/Cargo.toml" || die "failed to bump Cargo.toml"
+        git add "$APP_DIR/src-tauri/Cargo.toml"
+        if command -v cargo >/dev/null; then
+            ( cd "$APP_DIR/src-tauri" && cargo update -p canvas-desktop --precise "$ver" ) \
+                || die "cargo update failed — Cargo.lock would not match $ver"
+            git add "$APP_DIR/src-tauri/Cargo.lock"
+        else
+            die "cargo not on PATH — desktop bump needs it to refresh Cargo.lock"
+        fi
+        say "Synced $ver into tauri.conf.json and Cargo.toml"
     fi
     git commit --quiet -m "$APP_DIR $ver" || die "bump commit failed"
     say "Bumped $APP_DIR to $ver (committed)"
@@ -257,6 +291,10 @@ if [[ "$MODE" == "ci-tag" ]]; then
             mv=$(node -p "require('./$APP_DIR/$f').version")
             [[ "$mv" == "$ver" ]] || die "$f is $mv but package.json is $ver — re-run with --bump to sync all three, or fix $f by hand; tagging now would fail CI after the tag is public"
         done
+    fi
+    if [[ "$APP" == "desktop" ]]; then
+        tv=$(node -p "require('./$APP_DIR/src-tauri/tauri.conf.json').version")
+        [[ "$tv" == "$ver" ]] || die "tauri.conf.json is $tv but package.json is $ver — re-run with --bump to sync; tagging now would fail CI after the tag is public"
     fi
     if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
         $SKIP_EXISTING && { say "$APP $ver already released ($tag exists) — skipping"; exit 0; }
