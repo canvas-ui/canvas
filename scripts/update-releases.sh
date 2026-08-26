@@ -36,6 +36,14 @@ set -euo pipefail
 say() { echo "[release $(date '+%H:%M:%S')] $1"; }
 die() { echo "[release] ERROR: $1" >&2; exit 1; }
 
+# A build (pnpm install, vite) rewrites tracked files with identical content,
+# leaving git's stat cache stale — `git diff-index` then reports a clean tree as
+# dirty. Refresh first so the check compares content, not mtimes.
+tree_is_dirty() {
+    git update-index -q --refresh >/dev/null 2>&1 || true
+    ! git diff-index --quiet HEAD --
+}
+
 APP="${1:-}"
 [[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: web | extension | cli | desktop (see --help)"
 shift
@@ -68,7 +76,7 @@ done
 if [[ "$APP" == "all" ]]; then
     # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
     # files (theme fallbacks etc.), which must not fail the apps after them.
-    if ! $DRY_RUN && ! $ALLOW_DIRTY && ! git diff-index --quiet HEAD --; then
+    if ! $DRY_RUN && ! $ALLOW_DIRTY && tree_is_dirty; then
         die "working tree has uncommitted changes — commit them or pass --allow-dirty"
     fi
     rc=0
@@ -101,7 +109,7 @@ cd "$ROOT"
 branch=$(git branch --show-current)
 [[ "$branch" == "main" ]] || die "on branch '$branch' — releases publish from main only"
 
-if ! $DRY_RUN && ! $ALLOW_DIRTY && ! git diff-index --quiet HEAD --; then
+if ! $DRY_RUN && ! $ALLOW_DIRTY && tree_is_dirty; then
     die "working tree has uncommitted changes — commit them or pass --allow-dirty"
 fi
 
