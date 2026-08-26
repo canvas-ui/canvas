@@ -1,6 +1,6 @@
 {
     "name": "@augmentd-labs/canvas-schemas",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Canvas document schema ids, versions and document builders",
     "license": "AGPL-3.0-or-later",
     "type": "module",

@@ -1,7 +1,7 @@
 'use strict';
 
 import { SCHEMA_NOTE, NOTE_SCHEMA_VERSION } from '../ids.js';
-import { tagsToFeatures } from '../features.js';
+import { buildMetadata } from './_meta.js';
 
 /**
  * Build a Note document.
@@ -30,12 +30,7 @@ export function buildNoteDoc(content, { title, comment, tags, geo, metadata } = 
     if (title) doc.data.title = title;
     if (comment) doc.comment = comment;
 
-    const features = tagsToFeatures(tags);
-    const meta = {
-        ...(features.length ? { features } : {}),
-        ...(geo ? { geo } : {}),
-        ...(metadata || {})
-    };
-    if (Object.keys(meta).length) doc.metadata = meta;
+    const meta = buildMetadata({ tags, geo, metadata });
+    if (meta) doc.metadata = meta;
     return doc;
 }
