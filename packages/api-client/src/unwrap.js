@@ -15,7 +15,12 @@ import { CanvasError } from './errors.js';
 export function unwrap(body) {
     if (!isEnvelope(body)) return body;
     if (body.status === STATUS_ERROR) {
-        throw new CanvasError(body.message || 'Request failed', {
+        // Routes report the cause as the payload (`.error('Failed to create
+        // context', err.message)`), so throwing the message alone turned every
+        // one of them into the same unhelpful sentence.
+        const message = body.message || 'Request failed';
+        const detail = typeof body.payload === 'string' ? body.payload.trim() : '';
+        throw new CanvasError(detail && !message.includes(detail) ? `${message}: ${detail}` : message, {
             code: body.code,
             statusCode: body.statusCode,
             status: body.statusCode
