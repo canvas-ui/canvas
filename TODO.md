@@ -1,5 +1,73 @@
 # TODO
 
+## Next UI
+
+### Main objectives!
+
+Dates back to my early `iolinux` linux distribution endeavors with a ro-root and movable containerized user-runtimes dynamically installing your sw on-demand when needed(aot).
+
+- Contextualize your work! Working on a specific task? De-clutter your UI and only see data(notes, files, messages, browser tabs etc) related to the task
+- Share and collaborate on top of your Data, Context, Canvases aaand whole Workspaces with others
+- Cross device, every screen or even simple single-purpose compatibile HW should extend the UI
+  - Filter with swipe gestures on your phone running the toolbox UI and send results of your data analysis to your TV side-by-side with your favorite podcast
+- Simple navigation (up/down/left/right + rotation + click + doble-click + optional gestures depending on HW - your smart ring should be able to control the UI seamlessly)
+- Every task starts with a single clean canvas and one globally available button next to it triggering voice mode by default
+- Objective/outcome focused UI, no OS crap bleading-in, pure content contextualized to whatever task you are working on
+- No controll clutter, no multilevel Menu > Amend image > Graphical crap > Some other crap sub-category > Layer tool that you need so spend years learning, a single toolbox with a contextualized set of tools and a global always available section - both as fallback to voice
+- Roaming profiles are the default - login to your workstation then your laptop then any other device, authenticate and continue where you leff - start your work in voice-mode while driving, finish on your workstation+monitor setup, review on tablet while sipping coffee
+- Fine grained storage policies, backup your accounting data to S3 and local NAS, your photos to google drive and glacier, your podcasts to locally or to your local NAS
+- Intelligent data categorization - define a tree structure and tell your agents to sort specific data automatically when you dump them - have 1000 browser tabs you finally want to get stored? Sync them to /to-sort, run a hook to sort them into existing tree categories and optionally write summaries of each one(or download a local copy)
+
+- Canvases are organized into virtual threads centered around a given task(in context mode)
+- Switching between tasks has to be as moving from a well-maintained desk with a task-tuned toolbox and a bunch of canvases on to another well-maintained desks
+- Canvases can be organized vertically or horizontally or tabbed
+- Switching to a task(anchor)  via the the menu left moves the whole virtual "plane" up or down - displaing task-specific canvases
+- Screens or canvases that are opened on other devices will have a small indicator on the top righr corner
+- Layout and every single canvas can be LLM controlled, "show me the latest emails for the DC migration project please" folowed by "add the task list to the right" followed by "send this to my team" 
+
+### UI Hierarchy
+
+  - Screen/Viewport
+    - Real viewport/computer screen that shows the UI, any screen that connects to the UI should have the option to be named by the user (a default screen is created and autoconnected, rename spins of a named screen)
+    - Elements can be sent to a nemed screen or displayed on a named screen as 100% of the available viewport with margins
+  - Main "Context" menu (M0/M1/M2)
+    - Controlls whether we are in Explorer mode or whether the current screen is bound to a context
+    - L2 menu are pinned items shown as tiles with internal details(number of documents, messages etc), 
+      hidden by default, available as the left-most elements when swiped/navigated to the left
+    - L1 Full tree view, navigate the currently selected workspace trees freely or to change the context url, shows when navigating "left" from L2
+    - L0 Main menu that shows when navigating "left" from L1, Current M0
+    - Clicking on a pinned tile/item or on a tree node opens a default canvas
+    - Shift+clicking 
+
+A tree node can be tought-of as a "task container" - it containes everything related to a given task
+Canvases and widgets help to split that view into individual streams/threads 
+
+  - Set of canvases
+    - Different behaviour in Explorer and Context mode
+      - Explorer mode:
+        - Double-click on tree node
+        - 
+        - 
+        - 
+        - 
+      - Context mode:
+        - 
+        - 
+        - 
+        - 
+
+	- Opening a 
+    - Canvas is a A2UI/MCP-UI/MCP-APP AI driven dynamic "canvas" with the following layout features
+      - Canvas can take the full viewport(with a sane margin)
+      - New canvases can appear to the right 
+  - Contextualized Toolbox with globally-available elements
+
+
+- UI Workflows
+  - 
+
+
+
 ## Prose
 Great, btw, finally raining here, great as well, I love coding when it rains. Couple of cosmetics to
   keep the cosmetic treatment tempo - Toolbox should also be closable by Esc, same for M1/M2 - sorry
