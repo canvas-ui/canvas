@@ -1,51 +1,35 @@
 # TODO
 
-## Editor registry + sketches (pick up 2026-09-02, sketches first)
+## Editor registry + sketches
 
-Integrate third-party content producers without porting them. Canvas owns the
-document contract, not the editor: what schema/blob an editor emits, where it
-lands (current context/tree path via the existing Add flow), how a doc
-round-trips back into its editor, and how it renders when NOT editing (existing
-renderer registry off the preview blob).
+SHIPPED 2026-09-02 (web 2.8.0, synapsd 3.19.0, server 2.6.3): editor registry
+contract (`apps/web/src/components/editors/registry.ts`), Excalidraw sketch
+applet (`/apps/sketch`, toolbox Apps tab, Add → Sketch everywhere), schema
+`data/schema/drawing` (scene JSON = source of truth, PNG preview blob →
+thumbnails/cards/FUSE/WebDAV/offline all work unchanged), self-hosted fonts
+(`/excalidraw/fonts`, esm.sh fallback allowed in font-src). Leftovers:
 
-### 1. Editor registry (the contract)
+- [ ] "Edit sketch" affordance on drawing cards outside the applet
+      (DocumentSideCard / document-list menus) — `editorForDocument()` is
+      ready, only the button is missing; today you edit via the applet grid.
+- [ ] Text inside scenes is not searchable — extractor should fold scene text
+      elements into FTS (same pattern as File's `metadata.text.content`).
+- [ ] Large pasted images inflate `data.scene` (embedded files are base64) —
+      consider a size cap or externalizing scene files into blobs.
 
-- [ ] `{ id, schemas: produces/edits, lazy component, canCreate, canEdit(doc) }`
-      — same shape as the applet framework; these are content-producing applets.
-- [ ] Generic wiring: toolbox "Add …" entries and card "Edit" resolve through
-      the registry; editors load as lazy route-level chunks (zero main-bundle cost).
-
-### 2. Sketches / drawings (PRIORITY — first registry entry)
-
-- [ ] Embed `@excalidraw/excalidraw` (MIT — safe with AGPL; tldraw is NOT, needs
-      a license key). React component, no iframe: `initialData` scene JSON in,
-      `onChange` out, `exportToBlob`/`exportToSvg` for previews. Good on mobile —
-      the phone quick-sketch flow is its home turf.
-- [ ] Document shape: schema `data/abstraction/drawing`; **scene JSON is the
-      source of truth** (small, diffable, agent/search-friendly); exported
-      PNG/SVG stored as the blob so thumbnails, cards, FUSE/WebDAV and offline
-      pin warming work unchanged.
-- [ ] Flow: tap a tree node (e.g. Architecture) → "Add a drawing" → sketch →
-      save lands at the current path; tap the card → registry reopens the scene.
-- [ ] Multi-device: user sketches a lot on several devices — make sure the
-      editor route works standalone (applet-host style) for tablet/phone.
-
-### 3. Video trim (LATER — job, not editor)
+### Video trim (LATER — job, not editor)
 
 - [ ] No browser editor, no ffmpeg.wasm. UI = existing `<video>` player + a
       two-handle range slider; "cut" = one server-side ffmpeg job
       (`-ss/-to -c copy` keyframe cut, near-instant, no re-encode) persisting a
-      NEW document linked at the same path.
-- [ ] Fits the split-runtime direction: it's a server operation an agent can
-      also invoke ("trim the last upload to 0:42–1:10"). Registry entry whose
-      "editor" is a thin parameter UI over that endpoint.
+      NEW document linked at the same path. Registry entry whose "editor" is a
+      thin parameter UI over that endpoint; agent-invokable.
 
-### 4. Iframe + postMessage applet host (ONLY when a concrete tool demands it)
+### Iframe + postMessage applet host (ONLY when a concrete tool demands it)
 
 - [ ] For non-React / untrusted tools: sandboxed iframe + tiny window-message
       protocol (`getDocument`, `saveDocument(schema, payload, blob)`,
-      `getContext`) — VS Code webview / Figma plugin model. Composes with the
-      A2UI direction (agents can drive the same surface). Deliberately deferred.
+      `getContext`) — VS Code webview / Figma plugin model. Deliberately deferred.
 
 ## Next UI
 
