@@ -7,11 +7,11 @@ contract (`apps/web/src/components/editors/registry.ts`), Excalidraw sketch
 applet (`/apps/sketch`, toolbox Apps tab, Add → Sketch everywhere), schema
 `data/schema/drawing` (scene JSON = source of truth, PNG preview blob →
 thumbnails/cards/FUSE/WebDAV/offline all work unchanged), self-hosted fonts
-(`/excalidraw/fonts`, esm.sh fallback allowed in font-src). Leftovers:
+(`/excalidraw/fonts`, esm.sh fallback allowed in font-src). 2.8.1: sketch
+thumbnails in table/tile/card document views + gallery/mosaic widgets, and
+"Edit sketch" opens the full editor from the document modal/side card.
+Leftovers:
 
-- [ ] "Edit sketch" affordance on drawing cards outside the applet
-      (DocumentSideCard / document-list menus) — `editorForDocument()` is
-      ready, only the button is missing; today you edit via the applet grid.
 - [ ] Text inside scenes is not searchable — extractor should fold scene text
       elements into FTS (same pattern as File's `metadata.text.content`).
 - [ ] Large pasted images inflate `data.scene` (embedded files are base64) —
