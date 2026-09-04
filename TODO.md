@@ -1,5 +1,17 @@
 # TODO
 
+## Sortable workspace-local + global pinning
+
+We have a new UI comming soon thats in some extent already described in
+
+With that being said, untill all the drawings and flow diagrams are ready, we can implement some of the features in the current "classical" UI too.
+
+One important one - pins
+Every tree node (folder) - regardless whether of type context or directory - represents something like a task container
+It holds all data (and later workflows) to help contextualizing work seamlessly.
+
+A pin should
+
 ## Editor registry + sketches
 
 SHIPPED 2026-09-02 (web 2.8.0, synapsd 3.19.0, server 2.6.3): editor registry
