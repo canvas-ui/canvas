@@ -60,7 +60,35 @@ export function makeWorkspacesApi(c) {
             remove: (id, driver, address) => c.delete(ws.backend(id, driver, address)),
             sync: (id, driver, address) => c.post(ws.backendSync(id, driver, address)),
             usage: (id, driver, address) => c.get(ws.backendUsage(id, driver, address)),
-            documents: (id, driver, address, params = {}) => c.get(ws.backendDocuments(id, driver, address), { params })
+            documents: (id, driver, address, params = {}) => c.get(ws.backendDocuments(id, driver, address), { params }),
+            // Keyed objects + change feed (device-mirror protocol, see
+            // canvas-server docs/sync-protocol.md). `putObject` streams raw
+            // bytes; preconditions travel as headers (If-Match, If-None-Match,
+            // X-Canvas-Sha256, X-Canvas-Mtime, X-Canvas-Origin, X-Canvas-Conflict-Of).
+            objects: (id, driver, address, params = {}) => c.get(ws.backendObjects(id, driver, address), { params }),
+            changes: (id, driver, address, params = {}) => c.get(ws.backendChanges(id, driver, address), { params }),
+            putObject: (id, driver, address, key, data, { headers = {}, params } = {}) =>
+                c.request('PUT', ws.backendObject(id, driver, address, key), {
+                    data,
+                    ...(params ? { params } : {}),
+                    headers: { 'Content-Type': 'application/octet-stream', ...headers }
+                }),
+            deleteObject: (id, driver, address, key, { ifMatch, origin } = {}) =>
+                c.delete(ws.backendObject(id, driver, address, key), {
+                    headers: {
+                        ...(ifMatch ? { 'If-Match': ifMatch } : {}),
+                        ...(origin ? { 'X-Canvas-Origin': origin } : {})
+                    }
+                }),
+            renameObject: (id, driver, address, body) => c.post(ws.backendObjectRename(id, driver, address), body)
+        },
+        // Device mirrors + the sync conflict inbox.
+        sync: {
+            mirrors: (id) => c.get(ws.mirrors(id)),
+            reportMirror: (id, deviceId, body) => c.post(ws.mirrorStatus(id, deviceId), body),
+            forgetMirror: (id, deviceId) => c.delete(ws.mirror(id, deviceId)),
+            conflicts: (id) => c.get(ws.syncConflicts(id)),
+            resolveConflict: (id, docId, keep) => c.post(ws.syncConflictResolve(id, docId), { keep })
         },
         hooks: {
             list: (id) => c.get(ws.hooks(id)),

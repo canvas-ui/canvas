@@ -18,7 +18,10 @@ export function makeAuthApi(c) {
         devices: {
             register: (data) => c.post(routes.auth.deviceRegister(), data),
             list: () => c.get(routes.auth.devices()),
-            update: (id, data) => c.patch(routes.auth.device(id), data)
+            update: (id, data) => c.patch(routes.auth.device(id), data),
+            // Revoke: tokens + registry record; a daemon holding the old token
+            // gets 401 on its next call.
+            remove: (id) => c.delete(routes.auth.device(id))
         }
     };
 }

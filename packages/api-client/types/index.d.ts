@@ -68,6 +68,7 @@ export interface AuthApi {
         register(data: unknown): Promise<any>;
         list(): Promise<any>;
         update(id: string, data: unknown): Promise<any>;
+        remove(id: string): Promise<any>;
     };
 }
 
@@ -109,6 +110,18 @@ export interface WorkspacesApi {
         sync(id: string, driver: string, address: string): Promise<any>;
         usage(id: string, driver: string, address: string): Promise<any>;
         documents(id: string, driver: string, address: string, params?: Record<string, unknown>): Promise<any>;
+        objects(id: string, driver: string, address: string, params?: Record<string, unknown>): Promise<any>;
+        changes(id: string, driver: string, address: string, params?: Record<string, unknown>): Promise<any>;
+        putObject(id: string, driver: string, address: string, key: string, data: unknown, opts?: { headers?: Record<string, string>; params?: Record<string, unknown> }): Promise<any>;
+        deleteObject(id: string, driver: string, address: string, key: string, opts?: { ifMatch?: string; origin?: string }): Promise<any>;
+        renameObject(id: string, driver: string, address: string, body: { from: string; to: string; ifMatch?: string; origin?: string }): Promise<any>;
+    };
+    sync: {
+        mirrors(id: string): Promise<any>;
+        reportMirror(id: string, deviceId: string, body: Record<string, unknown>): Promise<any>;
+        forgetMirror(id: string, deviceId: string): Promise<any>;
+        conflicts(id: string): Promise<any>;
+        resolveConflict(id: string, docId: number | string, keep: 'hub' | 'incoming' | 'both'): Promise<any>;
     };
     hooks: {
         list(id: string): Promise<any>;

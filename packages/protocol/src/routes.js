@@ -10,6 +10,11 @@
  * are interpolated as-is (ULIDs/slugs, never contain reserved characters).
  */
 
+/** Object keys are relative paths: encode each segment, keep the slashes. */
+function objectKeySegment(key) {
+    return String(key || '').replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+}
+
 /** Normalize a tree path to a single leading slash, kept raw otherwise. */
 function treePathSegment(path) {
     const p = String(path || '/');
@@ -53,6 +58,17 @@ export const workspaces = {
     backendSync: (id, driver, address) => `${workspaces.backend(id, driver, address)}/sync`,
     backendUsage: (id, driver, address) => `${workspaces.backend(id, driver, address)}/usage`,
     backendDocuments: (id, driver, address) => `${workspaces.backend(id, driver, address)}/documents`,
+    // Keyed objects + change feed on a path-addressed storage backend — the
+    // device-mirror protocol (canvas-server docs/sync-protocol.md).
+    backendObjects: (id, driver, address) => `${workspaces.backend(id, driver, address)}/objects`,
+    backendObject: (id, driver, address, key) => `${workspaces.backend(id, driver, address)}/objects/${objectKeySegment(key)}`,
+    backendObjectRename: (id, driver, address) => `${workspaces.backend(id, driver, address)}/objects/rename`,
+    backendChanges: (id, driver, address) => `${workspaces.backend(id, driver, address)}/changes`,
+    mirrors: (id) => `/workspaces/${id}/mirrors`,
+    mirror: (id, deviceId) => `/workspaces/${id}/mirrors/${encodeURIComponent(deviceId)}`,
+    mirrorStatus: (id, deviceId) => `${workspaces.mirror(id, deviceId)}/status`,
+    syncConflicts: (id) => `/workspaces/${id}/sync/conflicts`,
+    syncConflictResolve: (id, docId) => `/workspaces/${id}/sync/conflicts/${docId}/resolve`,
     hooks: (id) => `/workspaces/${id}/hooks`,
     hook: (id, hookPath) => `/workspaces/${id}/hooks/${hookPath}`,
     hookRuns: (id) => `/workspaces/${id}/hooks/runs`,

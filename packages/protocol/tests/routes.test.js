@@ -79,3 +79,17 @@ test('schemas: hierarchical ids stay raw; .json variant', () => {
 test('ping', () => {
     assert.equal(routes.ping(), '/ping');
 });
+
+import { test as syncTest } from 'node:test';
+import syncAssert from 'node:assert/strict';
+import { routes as syncRoutes } from '../src/index.js';
+
+syncTest('sync protocol routes: object keys keep slashes, encode segments', () => {
+    const ws = syncRoutes.workspaces;
+    syncAssert.equal(ws.backendObjects('u', 'file', 'workspace:home'), '/workspaces/u/backends/file/workspace%3Ahome/objects');
+    syncAssert.equal(ws.backendObject('u', 'file', 'workspace:home', '/UI/a b#1.png'), '/workspaces/u/backends/file/workspace%3Ahome/objects/UI/a%20b%231.png');
+    syncAssert.equal(ws.backendObjectRename('u', 'file', 'workspace:home'), '/workspaces/u/backends/file/workspace%3Ahome/objects/rename');
+    syncAssert.equal(ws.backendChanges('u', 'file', 'workspace:home'), '/workspaces/u/backends/file/workspace%3Ahome/changes');
+    syncAssert.equal(ws.mirrorStatus('u', 'dev 1'), '/workspaces/u/mirrors/dev%201/status');
+    syncAssert.equal(ws.syncConflictResolve('u', 100007), '/workspaces/u/sync/conflicts/100007/resolve');
+});
