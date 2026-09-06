@@ -28,9 +28,12 @@ apps/
   shell                  bash client — not an npm package, pnpm skips it
   web                    web UI (vite/react; prebuilt artifact consumed by canvas-server)
 packages/
-  protocol               wire contract: envelope, error codes, routes, events
+  protocol               wire contract: envelope, error codes, routes, events, sync constants
   schemas                document schema ids, versions, builders
   api-client             ergonomic REST client over protocol
+  wallpapers             bundled wallpapers + picker metadata
+runtimes/
+  edge                   device runtime: folder mirrors (canvas-stored) + edge tunnel client
 integrations/
   kde                    desktop share bridge: Dolphin "Send to Canvas" + selected-text capture
 ```
@@ -39,6 +42,28 @@ integrations/
 - [`apps/desktop`](apps/desktop/README.md) — Tauri desktop app
 - [`apps/browser-extension`](apps/browser-extension/README.md) — Chromium + Firefox extension
 - [`apps/web`](apps/web/README.md) — web UI (vite/react)
+- [`runtimes/edge`](runtimes/edge/README.md) — `canvas-edge` daemon (`npm install -g github:canvas-ui/canvas#edge-dist`)
+
+## Shared components straight from git
+
+Every component another repo needs is published as a self-contained package
+on its own `<name>-dist` branch (registry dependencies only; workspace and git
+dependencies are bundled inside — `scripts/pack-dist.mjs`):
+
+| pin | source |
+|---|---|
+| `"canvas-web": "github:canvas-ui/canvas#web-dist"` | `apps/web` (built) |
+| `"@augmentd-labs/canvas-edge": "github:canvas-ui/canvas#edge-dist"` | `runtimes/edge` |
+| `"@augmentd-labs/canvas-protocol": "github:canvas-ui/canvas#protocol-dist"` | `packages/protocol` |
+| `"@augmentd-labs/canvas-api-client": "github:canvas-ui/canvas#api-client-dist"` | `packages/api-client` |
+| `"@augmentd-labs/canvas-schemas": "github:canvas-ui/canvas#schemas-dist"` | `packages/schemas` |
+| `"@augmentd-labs/canvas-wallpapers": "github:canvas-ui/canvas#wallpapers-dist"` | `packages/wallpapers` |
+
+`npm run release:dist` (or `~/Code/canvas/canvas-stack.sh --dist`) stages and
+force-pushes all six; `release:<name>` ships one. CI stages every artifact on
+each PR and installs the edge one from a git URL, so a broken bundle fails
+review rather than a release. `edge-v*` tags also pin a tarball on the GitHub
+Release (and publish to npm once an `NPM_TOKEN` exists), like `web-v*`.
 
 ## Development
 

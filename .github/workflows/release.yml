@@ -1,8 +1,8 @@
 name: release
 
 # Tag-per-app releases (decided in the migration plan): pushing cli-vX.Y.Z /
-# web-vX.Y.Z / desktop-vX.Y.Z / extension-vX.Y.Z builds that app and attaches
-# its artifacts to the GitHub Release for the tag. canvas-fuse releases from
+# web-vX.Y.Z / desktop-vX.Y.Z / extension-vX.Y.Z / edge-vX.Y.Z builds that app
+# and attaches its artifacts to the GitHub Release for the tag. canvas-fuse releases from
 # its own repo the same way (v* tags there). Each job asserts the tag version
 # matches the app's manifest so a stray tag can't publish mislabeled artifacts.
 #
@@ -14,6 +14,7 @@ on:
     tags:
       - 'cli-v*'
       - 'web-v*'
+      - 'edge-v*'
       - 'desktop-v*'
       - 'extension-v*'
   workflow_dispatch:
@@ -56,6 +57,60 @@ jobs:
           files: |
             artifacts/*.tgz
             artifacts/SHA256SUMS
+
+  # The *-dist branches themselves are pushed by scripts/update-releases.sh
+  # (CI never writes to the repo); this job pins a tagged edge version as a
+  # tarball on the GitHub Release and publishes it to npm once a token exists.
+  edge:
+    if: startsWith(github.ref_name, 'edge-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert tag matches runtimes/edge version
+        run: |
+          v="${GITHUB_REF_NAME#edge-v}"
+          m=$(node -p "require('./runtimes/edge/package.json').version")
+          [ "$v" = "$m" ] || { echo "tag $v != manifest $m"; exit 1; }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @augmentd-labs/canvas-edge run test
+      - run: node scripts/pack-dist.mjs edge --out artifacts --pack
+      - name: Checksums
+        run: cd artifacts && sha256sum *.tgz > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: canvas-edge ${{ github.ref_name }}
+          body: >
+            Self-contained canvas-edge package (device runtime: folder mirrors +
+            edge tunnel). Bundles canvas-protocol and canvas-stored; registry
+            dependencies only. Install the moving branch with
+            `npm install -g github:canvas-ui/canvas#edge-dist`, or pin this
+            tarball URL.
+          files: |
+            artifacts/*.tgz
+            artifacts/SHA256SUMS
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning title=npm publish skipped::NPM_TOKEN is not set — the GitHub Release tarball was published, npm was not."
+            exit 0
+          fi
+          ver=$(node -p "require('./runtimes/edge/package.json').version")
+          if npm view "@augmentd-labs/canvas-edge@$ver" version >/dev/null 2>&1; then
+            echo "already published — skipping"; exit 0
+          fi
+          cd artifacts/dist/edge && npm publish --access public
 
   cli:
     if: startsWith(github.ref_name, 'cli-v')

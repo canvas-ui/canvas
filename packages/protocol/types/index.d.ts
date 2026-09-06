@@ -159,3 +159,8 @@ export declare namespace events {
     const EMIT_SESSION_CLOSE: 'session.close';
     const SESSION_DELTA: 'session.delta';
 }
+
+// sync.js — file-plane constants shared by hub, canvas-fuse and canvas-edge
+export const WORKSPACE_INTERNAL_DIRNAME: '.workspace';
+export const DEFAULT_SYNC_EXCLUSIONS: readonly string[];
+export const WORKSPACE_INTERNAL_EXCLUSIONS: readonly string[];

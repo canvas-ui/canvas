@@ -1,7 +1,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 
-// Root config covers packages/** only. Apps keep the configs they arrived
+// Root config covers packages/** and runtimes/**. Apps keep the configs they arrived
 // with (apps/cli lints itself via its own eslint.config.js through
 // `pnpm -r run lint`). Rule block mirrors apps/cli so packages and apps
 // share one style.
@@ -22,7 +22,7 @@ export default [
         }
     },
     {
-        files: ['packages/**/*.js'],
+        files: ['packages/**/*.js', 'runtimes/**/*.js', 'runtimes/**/bin/*'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',

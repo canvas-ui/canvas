@@ -1,14 +1,19 @@
 packages:
   - apps/*
   - packages/*
+  - runtimes/*
 
 # pnpm 10 blocks dependency lifecycle scripts by default; allowlist per package.
 # - bun: apps/cli devDep; its postinstall downloads the bun binary used by build:*
 # - esbuild: apps/browser-extension + vite (desktop, web)
 # - sharp: pre-listed for apps/web (Phase 3)
 # - @tauri-apps/cli: apps/desktop; postinstall downloads the tauri binary
+# - lmdb / msgpackr-extract: runtimes/edge via canvas-stored; prebuilt binaries, the
+#   script only picks the platform package
 onlyBuiltDependencies:
   - bun
   - esbuild
+  - lmdb
+  - msgpackr-extract
   - sharp
   - "@tauri-apps/cli"

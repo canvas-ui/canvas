@@ -2,6 +2,9 @@
 # update-releases.sh — ONE command to release any app in this monorepo.
 #
 #   npm run release:web                       build + publish the web-dist branch
+#   npm run release:edge                      publish the edge-dist branch (runtimes/edge)
+#   npm run release:dist                      every dist branch: protocol schemas wallpapers
+#                                             api-client edge web  (scripts/pack-dist.mjs)
 #   npm run release:extension                 tag extension-v<ver> → CI builds both zips
 #   npm run release:cli                       tag cli-v<ver> → CI builds + publishes
 #   npm run release:desktop                   tag desktop-v<ver> → CI builds (multi-OS)
@@ -17,10 +20,13 @@
 #   any             -- --allow-dirty               skip the clean-tree check (hacking only)
 #
 # Per-app release modes (why they differ):
-#   web        local build → force-push { package.json, dist/ } to the `web-dist`
-#              branch. canvas-server consumes it as
-#              "canvas-web": "github:canvas-ui/canvas#web-dist" and re-resolves
-#              on every `npm update canvas-web`.
+#   web, edge, protocol, schemas, wallpapers, api-client
+#              stage a self-contained package (scripts/pack-dist.mjs: registry
+#              deps only, workspace/git deps bundled) → force-push it to the
+#              `<app>-dist` branch. Consumers pin the branch straight from git:
+#              "canvas-web": "github:canvas-ui/canvas#web-dist",
+#              "@augmentd-labs/canvas-edge": "github:canvas-ui/canvas#edge-dist"
+#              and re-resolve on `npm update <name>`. `dist` = all six in order.
 #   extension  tag extension-v<ver> + push — release.yml builds both zips.
 #   cli        tag cli-v<ver> + push — release.yml builds and publishes.
 #   desktop    tag desktop-v<ver> + push — release.yml builds (needs CI's
@@ -45,7 +51,7 @@ tree_is_dirty() {
 }
 
 APP="${1:-}"
-[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: web | extension | cli | desktop (see --help)"
+[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: web | edge | protocol | schemas | wallpapers | api-client | dist | extension | cli | desktop (see --help)"
 shift
 
 BUMP=""
@@ -73,14 +79,17 @@ done
 # Tagged apps skip when their current version is already released. Without
 # --if-needed, web always republishes (the branch is idempotent). With
 # --if-needed, web skips too unless something shippable moved.
-if [[ "$APP" == "all" ]]; then
+DIST_APPS=(protocol schemas wallpapers api-client edge web)
+if [[ "$APP" == "all" || "$APP" == "dist" ]]; then
     # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
     # files (theme fallbacks etc.), which must not fail the apps after them.
     if ! $DRY_RUN && ! $ALLOW_DIRTY && tree_is_dirty; then
         die "working tree has uncommitted changes — commit them or pass --allow-dirty"
     fi
     rc=0
-    for app in web extension cli desktop; do
+    apps=("${DIST_APPS[@]}")
+    [[ "$APP" == "all" ]] && apps+=(extension cli desktop)
+    for app in "${apps[@]}"; do
         say "── $app ─────────────────────────────"
         bash "$0" "$app" --skip-existing --allow-dirty \
             $($PUSH || echo --no-push) \
@@ -88,17 +97,22 @@ if [[ "$APP" == "all" ]]; then
             $($IF_NEEDED && echo --if-needed) \
             ${BUMP:+--bump "$BUMP"} || rc=1
     done
-    [[ $rc -eq 0 ]] && say "release:all complete" || die "release:all finished with failures (see above)"
+    [[ $rc -eq 0 ]] && say "release:$APP complete" || die "release:$APP finished with failures (see above)"
     exit $rc
 fi
 
 # ── App recipes ──────────────────────────────────────────────────────────────
 case "$APP" in
-    web)       APP_DIR="apps/web";               MODE="branch"; TAG_PREFIX="web-v" ;;
+    web)        APP_DIR="apps/web";               MODE="branch"; TAG_PREFIX="web-v";        DIST_BRANCH="web-dist" ;;
+    edge)       APP_DIR="runtimes/edge";          MODE="branch"; TAG_PREFIX="edge-v";       DIST_BRANCH="edge-dist" ;;
+    protocol)   APP_DIR="packages/protocol";      MODE="branch"; TAG_PREFIX="protocol-v";   DIST_BRANCH="protocol-dist" ;;
+    schemas)    APP_DIR="packages/schemas";       MODE="branch"; TAG_PREFIX="schemas-v";    DIST_BRANCH="schemas-dist" ;;
+    wallpapers) APP_DIR="packages/wallpapers";    MODE="branch"; TAG_PREFIX="wallpapers-v"; DIST_BRANCH="wallpapers-dist" ;;
+    api-client) APP_DIR="packages/api-client";    MODE="branch"; TAG_PREFIX="api-client-v"; DIST_BRANCH="api-client-dist" ;;
     extension) APP_DIR="apps/browser-extension"; MODE="ci-tag"; TAG_PREFIX="extension-v" ;;
     cli)       APP_DIR="apps/cli";               MODE="ci-tag"; TAG_PREFIX="cli-v" ;;
     desktop)   APP_DIR="apps/desktop";           MODE="ci-tag"; TAG_PREFIX="desktop-v" ;;
-    *) die "unknown app '$APP' — valid: web, extension, cli, desktop" ;;
+    *) die "unknown app '$APP' — valid: web, edge, protocol, schemas, wallpapers, api-client, dist, extension, cli, desktop" ;;
 esac
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git repository"
@@ -150,7 +164,7 @@ watch_paths() {
     node -e '
 const fs = require("fs"), path = require("path");
 const appDir = process.argv[1];
-const roots = ["packages", "integrations", "apps"];
+const roots = ["packages", "runtimes", "integrations", "apps"];
 const byName = new Map();
 for (const root of roots) {
   if (!fs.existsSync(root)) continue;
@@ -191,18 +205,18 @@ commits_since() {
 if $IF_NEEDED && [[ -z "$BUMP" ]]; then
     cur=$(node -p "require('./$APP_DIR/package.json').version")
     if [[ "$MODE" == "branch" ]]; then
-        git fetch origin web-dist --quiet || true
-        published=$(git show origin/web-dist:package.json 2>/dev/null \
+        git fetch origin "$DIST_BRANCH" --quiet || true
+        published=$(git show "origin/$DIST_BRANCH:package.json" 2>/dev/null \
             | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{process.stdout.write(JSON.parse(d).canvasRev||'')}catch{}})")
         if [[ -n "$published" ]] && git rev-parse --verify "${published}^{commit}" >/dev/null 2>&1; then
             n=$(commits_since "$published")
             if [[ "$n" -eq 0 ]]; then
-                say "--if-needed: web-dist already has $published and nothing shippable moved — skipping"
+                say "--if-needed: $DIST_BRANCH already has $published and nothing shippable moved — skipping"
                 exit 0
             fi
-            say "--if-needed: $n non-docs commit(s) since web-dist@$published — republishing"
+            say "--if-needed: $n non-docs commit(s) since $DIST_BRANCH@$published — republishing"
         else
-            say "--if-needed: no readable canvasRev on origin/web-dist — publishing"
+            say "--if-needed: no readable canvasRev on origin/$DIST_BRANCH — publishing"
         fi
     else
         cur_tag="$TAG_PREFIX$cur"
@@ -326,27 +340,25 @@ if [[ "$MODE" == "ci-tag" ]]; then
     exit 0
 fi
 
-# ── Mode: branch (web) — build locally, publish the web-dist branch ──────────
-say "Installing (filtered, frozen lockfile)..."
-corepack pnpm install --filter canvas-web... --frozen-lockfile >/dev/null || die "pnpm install failed"
-say "Building apps/web $ver..."
-corepack pnpm --filter canvas-web run build >/dev/null || die "web build failed"
-[[ -f "$APP_DIR/dist/index.html" ]] || die "build produced no dist/index.html"
+# ── Mode: branch — stage a self-contained package, publish the <app>-dist branch
+if [[ "$APP" == "web" ]]; then
+    say "Installing (filtered, frozen lockfile)..."
+    corepack pnpm install --filter canvas-web... --frozen-lockfile >/dev/null || die "pnpm install failed"
+    say "Building apps/web $ver..."
+    corepack pnpm --filter canvas-web run build >/dev/null || die "web build failed"
+    [[ -f "$APP_DIR/dist/index.html" ]] || die "build produced no dist/index.html"
+else
+    say "Installing (frozen lockfile)..."
+    corepack pnpm install --frozen-lockfile >/dev/null || die "pnpm install failed"
+fi
 
-stage=$(mktemp -d)
-trap 'rm -rf "$stage"' EXIT
-cp -r "$APP_DIR/dist" "$stage/dist"
-node -e "
-const p = require('./$APP_DIR/package.json');
-require('fs').writeFileSync(process.argv[1] + '/package.json', JSON.stringify({
-  name: 'canvas-web',
-  version: p.version,
-  description: 'Prebuilt Canvas web UI — published by scripts/update-releases.sh (web-dist branch)',
-  license: p.license,
-  files: ['dist'],
-  canvasRev: '$rev',
-}, null, 2) + '\n');
-" "$stage" || die "failed to write the web-dist package.json"
+out=$(mktemp -d)
+trap 'rm -rf "$out"' EXIT
+say "Staging $APP $ver (scripts/pack-dist.mjs)..."
+node scripts/pack-dist.mjs "$APP" --out "$out" || die "pack-dist failed for $APP"
+stage="$out/dist/$APP"
+[[ -f "$stage/package.json" ]] || die "pack-dist produced no $stage/package.json"
+dist_name=$(node -p "require('$stage/package.json').name")
 
 origin_url=$(git remote get-url origin)
 # In CI the checkout's auth lives in ITS git config; the staged repo has none.
@@ -355,27 +367,28 @@ if [[ -n "${GITHUB_TOKEN:-}" && "$origin_url" == https://github.com/* ]]; then
 fi
 (
     cd "$stage"
-    git init --quiet -b web-dist
-    git add -A
-    git -c user.name="release:web" -c user.email="release@canvas" \
-        commit --quiet -m "canvas-web $ver (main@$rev)"
-) || die "failed to assemble the web-dist commit"
+    git init --quiet -b "$DIST_BRANCH"
+    # -f: bundled deps live under node_modules/, which a global gitignore may hide.
+    git add -A -f
+    git -c user.name="release:$APP" -c user.email="release@canvas" \
+        commit --quiet -m "$dist_name $ver (main@$rev)"
+) || die "failed to assemble the $DIST_BRANCH commit"
 dist_sha=$(git -C "$stage" rev-parse HEAD)
 
 if $PUSH; then
     push_main_if_needed
-    say "Force-pushing web-dist ($dist_sha)..."
-    git -C "$stage" push --force "$origin_url" web-dist || die "push of web-dist failed"
-    pushed=$(git ls-remote "$origin_url" refs/heads/web-dist | cut -f1)
-    [[ "$pushed" == "$dist_sha" ]] || die "verification failed: remote web-dist is '$pushed', expected '$dist_sha'"
-    say "Verified: origin/web-dist == $dist_sha"
+    say "Force-pushing $DIST_BRANCH ($dist_sha)..."
+    git -C "$stage" push --force "$origin_url" "$DIST_BRANCH" || die "push of $DIST_BRANCH failed"
+    pushed=$(git ls-remote "$origin_url" "refs/heads/$DIST_BRANCH" | cut -f1)
+    [[ "$pushed" == "$dist_sha" ]] || die "verification failed: remote $DIST_BRANCH is '$pushed', expected '$dist_sha'"
+    say "Verified: origin/$DIST_BRANCH == $dist_sha"
     if $TAG; then
         git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists — bump first (--bump patch)"
         git tag "$tag" && git push origin "$tag" || die "tag push failed"
         say "Tagged $tag (release.yml builds the pinned tarball)"
     fi
 else
-    say "--no-push: web-dist commit assembled ($dist_sha); re-run without --no-push to publish"
+    say "--no-push: $DIST_BRANCH commit assembled ($dist_sha); re-run without --no-push to publish"
 fi
 
-say "Done: canvas-web $ver (main@$rev) → web-dist. Deployments pick it up on their next update; local canvas-server dev: npm install canvas-web@github:canvas-ui/canvas#web-dist --no-save"
+say "Done: $dist_name $ver (main@$rev) → $DIST_BRANCH. Consumers pick it up on their next \`npm update $dist_name\`; pin: \"$dist_name\": \"github:canvas-ui/canvas#$DIST_BRANCH\""
