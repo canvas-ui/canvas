@@ -6,8 +6,10 @@ name: release
 # its own repo the same way (v* tags there). Each job asserts the tag version
 # matches the app's manifest so a stray tag can't publish mislabeled artifacts.
 #
-# canvas-server consumes web via the versioned tarball URL — after a web
-# release, bump the URL in canvas-server/package.json.
+# canvas-server consumes web/protocol/edge from the *-dist branches, which
+# dist.yml republishes on every push to main; the tagged tarballs here are the
+# immutable pins. housekeeping.yml keeps 5 runs per workflow and 5 releases
+# per app.
 
 on:
   push:

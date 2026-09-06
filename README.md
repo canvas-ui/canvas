@@ -59,10 +59,13 @@ dependencies are bundled inside — `scripts/pack-dist.mjs`):
 | `"@augmentd-labs/canvas-schemas": "github:canvas-ui/canvas#schemas-dist"` | `packages/schemas` |
 | `"@augmentd-labs/canvas-wallpapers": "github:canvas-ui/canvas#wallpapers-dist"` | `packages/wallpapers` |
 
-`npm run release:dist` (or `~/Code/canvas/canvas-stack.sh --dist`) stages and
-force-pushes all six; `release:<name>` ships one. CI stages every artifact on
-each PR and installs the edge one from a git URL, so a broken bundle fails
-review rather than a release. `edge-v*` tags also pin a tarball on the GitHub
+`dist.yml` republishes all six on every push to main (only the ones whose
+sources moved); `npm run release:dist` (or `~/Code/canvas/canvas-stack.sh
+--dist`) does the same from a laptop, and `release:<name>` ships one. `ci.yml`
+stages every artifact on each PR and installs the edge one from a git URL, so
+a broken bundle fails review rather than a release. `housekeeping.yml` keeps
+the last 5 runs per workflow and the last 5 releases per app (older tags go
+with them). `edge-v*` tags also pin a tarball on the GitHub
 Release (and publish to npm once an `NPM_TOKEN` exists), like `web-v*`.
 
 ## Development

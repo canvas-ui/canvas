@@ -1,0 +1,42 @@
+name: dist
+
+# Publishes the git-fetchable artifact branches on every push to main:
+# protocol-dist, schemas-dist, wallpapers-dist, api-client-dist, edge-dist,
+# web-dist (scripts/pack-dist.mjs via scripts/update-releases.sh). Consumers
+# pin "github:canvas-ui/canvas#<name>-dist" and pick a push up on their next
+# `npm update`. --if-needed skips a branch whose sources did not move since
+# its recorded canvasRev, so an unrelated commit republishes nothing.
+#
+# This is the one workflow that writes to the repo (dist branches only, never
+# main). `npm run release:dist` / canvas-stack.sh --dist do the same from a
+# laptop; both force-push, so whichever runs last wins with identical content.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dist-main
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main          # a real branch, not a detached HEAD — the script insists on main
+          fetch-depth: 0     # --if-needed walks history back to each branch's canvasRev
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Publish dist branches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/update-releases.sh dist --if-needed
