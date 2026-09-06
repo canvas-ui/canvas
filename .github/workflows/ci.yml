@@ -48,7 +48,7 @@ jobs:
       - name: Smoke-test the edge artifact from a git URL
         run: |
           set -e
-          bare=$(mktemp -d); git init -q --bare -b main "$bare"
+          bare=$(mktemp -d); git init -q --bare -b edge-dist "$bare"  # HEAD must resolve after the push, or npm's git resolver fails
           ( cd artifacts/dist/edge && git init -q -b edge-dist && git add -A -f \
             && git -c user.name=ci -c user.email=ci@canvas commit -q -m edge-dist && git push -q "$bare" edge-dist )
           consumer=$(mktemp -d); cd "$consumer"; npm init -y >/dev/null
