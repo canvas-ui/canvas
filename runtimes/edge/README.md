@@ -25,7 +25,7 @@ canvas-edge                     # detached, logs to ~/.canvas/var/log/canvas-edg
 Not on npm yet. The pipeline publishes a self-contained artifact branch:
 
 ```
-npm install -g github:canvas-ui/canvas#edge-dist
+npm install -g --ignore-scripts github:canvas-ui/canvas#edge-dist
 ```
 
 `canvas mirror init` offers exactly that when the binary is missing. The

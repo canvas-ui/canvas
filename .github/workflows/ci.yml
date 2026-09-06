@@ -52,6 +52,6 @@ jobs:
           ( cd artifacts/dist/edge && git init -q -b edge-dist && git add -A -f \
             && git -c user.name=ci -c user.email=ci@canvas commit -q -m edge-dist && git push -q "$bare" edge-dist )
           consumer=$(mktemp -d); cd "$consumer"; npm init -y >/dev/null
-          npm install --no-audit --no-fund "git+file://$bare#edge-dist"
+          npm install --ignore-scripts --no-audit --no-fund "git+file://$bare#edge-dist"
           test -d node_modules/@augmentd-labs/canvas-edge/node_modules/canvas-stored
           CANVAS_USER_HOME=/tmp/edge-ci timeout 8 node node_modules/.bin/canvas-edge --foreground || [ $? -eq 124 ]

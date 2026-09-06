@@ -94,7 +94,7 @@ jobs:
             Self-contained canvas-edge package (device runtime: folder mirrors +
             edge tunnel). Bundles canvas-protocol and canvas-stored; registry
             dependencies only. Install the moving branch with
-            `npm install -g github:canvas-ui/canvas#edge-dist`, or pin this
+            `npm install -g --ignore-scripts github:canvas-ui/canvas#edge-dist`, or pin this
             tarball URL.
           files: |
             artifacts/*.tgz
