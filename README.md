@@ -42,7 +42,7 @@ integrations/
 - [`apps/desktop`](apps/desktop/README.md) — Tauri desktop app
 - [`apps/browser-extension`](apps/browser-extension/README.md) — Chromium + Firefox extension
 - [`apps/web`](apps/web/README.md) — web UI (vite/react)
-- [`runtimes/edge`](runtimes/edge/README.md) — `canvas-edge` daemon (`npm install -g --ignore-scripts github:canvas-ui/canvas#edge-dist`)
+- [`runtimes/edge`](runtimes/edge/README.md) — `canvas-edge` daemon (`canvas mirror edge install`)
 
 ## Shared components straight from git
 

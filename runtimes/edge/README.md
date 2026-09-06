@@ -22,13 +22,18 @@ canvas-edge                     # detached, logs to ~/.canvas/var/log/canvas-edg
 
 ## Install
 
-Not on npm yet. The pipeline publishes a self-contained artifact branch:
+Not on npm yet. The pipeline publishes a self-contained artifact branch,
+`edge-dist`. The CLI fetches it into its own prefix:
 
 ```
-npm install -g --ignore-scripts github:canvas-ui/canvas#edge-dist
+canvas mirror edge install      # → ~/.canvas/edge/node_modules/@augmentd-labs/canvas-edge
+canvas mirror edge update       # latest edge-dist + restart the daemon
 ```
 
-`canvas mirror init` offers exactly that when the binary is missing. The
+(`npm install --ignore-scripts github:canvas-ui/canvas#edge-dist` in any
+project does the same; avoid `npm -g` — global installs of git packages with
+bundled deps came out incomplete on npm 11.) `canvas mirror init` offers the
+install when the binary is missing. The
 artifact bundles its workspace/git dependencies (canvas-protocol,
 canvas-stored) and keeps only registry dependencies external — see
 `scripts/pack-dist.mjs`.
