@@ -12,7 +12,7 @@
 #                                             versions are skipped, web always republishes
 #
 #   any of the above -- --bump patch|minor|major   bump the app version first (committed)
-#   web only        -- --tag                       ALSO tag web-v<ver> (pinned tarball via CI)
+#   branch apps     -- --tag                       ALSO tag <app>-v<ver> when unreleased (pinned tarball via CI)
 #   any             -- --if-needed                 skip if nothing shipped since last release;
 #                                                  patch-bump tagged apps whose code moved
 #   any             -- --no-push                   stop before pushing, print what would run
@@ -383,9 +383,18 @@ if $PUSH; then
     [[ "$pushed" == "$dist_sha" ]] || die "verification failed: remote $DIST_BRANCH is '$pushed', expected '$dist_sha'"
     say "Verified: origin/$DIST_BRANCH == $dist_sha"
     if $TAG; then
-        git rev-parse -q --verify "refs/tags/$tag" >/dev/null && die "tag $tag already exists — bump first (--bump patch)"
-        git tag "$tag" && git push origin "$tag" || die "tag push failed"
-        say "Tagged $tag (release.yml builds the pinned tarball)"
+        # A dist branch republishes freely; the tag is the immutable point.
+        # An existing tag for this version is fine — the branch moved, the
+        # Release stays what it was until the version is bumped.
+        if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            say "$tag already exists — branch republished, Release left as is (bump to cut a new one)"
+        else
+            git tag "$tag" && git push origin "$tag" || die "tag push failed"
+            if [[ "${GITHUB_ACTIONS:-}" == "true" ]] && command -v gh >/dev/null; then
+                gh workflow run release.yml --ref "$tag" || say "WARN: could not dispatch release.yml for $tag"
+            fi
+            say "Tagged $tag (release.yml pins the tarball on the GitHub Release)"
+        fi
     fi
 else
     say "--no-push: $DIST_BRANCH commit assembled ($dist_sha); re-run without --no-push to publish"
