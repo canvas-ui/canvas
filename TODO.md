@@ -12,6 +12,8 @@ It holds all data (and later workflows) to help contextualizing work seamlessly.
 
 A pin should
 
+
+
 ## Editor registry + sketches
 
 SHIPPED 2026-09-02 (web 2.8.0, synapsd 3.19.0, server 2.6.3): editor registry
