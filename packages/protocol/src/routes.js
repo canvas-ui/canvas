@@ -44,6 +44,10 @@ export const workspaces = {
     tree: (id) => `/workspaces/${id}/tree`,
     trees: (id) => `/workspaces/${id}/trees`,
     treePath: (id, treeName, path) => `/workspaces/${id}/trees/${encodeURIComponent(treeName)}/path${treePathSegment(path)}`,
+    /** Per-workspace pinned tree paths (task containers). */
+    pins: (id) => `/workspaces/${id}/pins`,
+    pin: (id, pinId) => `/workspaces/${id}/pins/${encodeURIComponent(pinId)}`,
+    pinsOrder: (id) => `/workspaces/${id}/pins/order`,
     documents: (id) => `/workspaces/${id}/documents`,
     /** Soft-remove (documents stay in the DB, drop from the context). */
     documentsRemove: (id) => `/workspaces/${id}/documents/remove`,

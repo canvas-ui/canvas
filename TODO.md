@@ -30,8 +30,25 @@ API endpoints maybe).
 Pins are per-workspace, one should be able to right-click on a path and Pin/Unpin it
 We should add a Pins tab into M2
 - M2 tabs should be sortable, users who default to the directory tree view should have the option to 
- 
+
+Pins should be shown as tiles, Folder name as title, full path as subtitilee and maybe a few stats
+read from metadata or doc count (we can ommit for now), tiles should be prominent - since each
+"layer" can store metadata we should show its color and icon if present
+
 Let me descope the UI update for now, we'll work on it once the above landed
+
+LANDED 2026-09-07 (server 2.8.5, web 2.9.1, protocol routes `workspaces.pins`):
+- Backend: workspace.json `pins[]` (ordered; `{id, tree, path, layerId, label, createdAt}`),
+  `GET/POST/DELETE /workspaces/:id/pins`, `DELETE /pins/:pinId`, `PATCH /pins/order`;
+  GET resolves each pin against the live tree (label/description/color/icon/locked +
+  `resolvable`), self-heals renamed/moved folders via layerId, keeps deleted ones flagged;
+  `pins.changed` on the workspace ws channel. Pins are workspace-level (shared by members),
+  not per-user — the older per-user home `pinnedCanvases` list is untouched.
+- Web: Pins tab in the workspace M2 (tiles: icon well tinted with layer color, label,
+  `tree:/path`, description, unpin, drag-sort), Pin/Unpin in the tree context menu
+  (context + directory trees), M2 tabs drag-sortable, order kept per user in the webui
+  config (`m2.tabOrder`) — the first tab is what a bare /workspaces/<name> opens on.
+- Not done: tile stats (doc counts), global cross-workspace pin list, desktop UI.
 
 
 ## Editor registry + sketches
