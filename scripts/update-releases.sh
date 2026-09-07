@@ -211,7 +211,9 @@ if $IF_NEEDED && [[ -z "$BUMP" ]]; then
     cur=$(node -p "require('./$APP_DIR/package.json').version")
     if [[ "$MODE" == "branch" ]]; then
         git fetch origin "$DIST_BRANCH" --quiet || true
-        published=$(git show "origin/$DIST_BRANCH:package.json" 2>/dev/null \
+        # `|| true`: a branch that does not exist yet (first publish) must not
+        # trip pipefail + set -e and end the run silently.
+        published=$({ git show "origin/$DIST_BRANCH:package.json" 2>/dev/null || true; } \
             | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{process.stdout.write(JSON.parse(d).canvasRev||'')}catch{}})")
         if [[ -n "$published" ]] && git rev-parse --verify "${published}^{commit}" >/dev/null 2>&1; then
             n=$(commits_since "$published")
