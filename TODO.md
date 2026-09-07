@@ -142,28 +142,122 @@ Great, btw, finally raining here, great as well, I love coding when it rains. Co
   related to task on that table - to a new worktable related to a new tasks with everything prepared
 
 
+## Rust core, desktop-first runtime (design note 2026-09-07)
+
+Where the project is heading: **most users will download canvas-desktop**
+(Rust/Tauri: tray app + UI, used together with the web UI) and never see a
+terminal. The CLI was meant to be an Ollama-like single binary; bun gives a
+90 MB executable because the runtime IS the binary (all CLI JavaScript is
+0.3 MB), and no JS packager does better (Node SEA 100+ MB, Deno ~80-100,
+QuickJS has no fs/process). A small static binary means a compiled core,
+and the stack already has one language for that: canvas-fuse is Rust, the
+desktop shell is Rust. This note is cross-repo (monorepo, canvas-fuse,
+canvas-server, canvas-stored), hence here.
+
+### Decision
+
+1. **`canvas-core` Rust crate** — one substrate for the desktop app, a Rust
+   `canvas` CLI and canvas-fuse. Lives in the monorepo (`crates/canvas-core`,
+   Cargo workspace next to `apps/desktop/src-tauri`); canvas-fuse depends on
+   it by git until it moves into the monorepo too (it stays a separate
+   binary either way).
+2. **The desktop path must not depend on Node.** The Rust real-folder mirror
+   daemon (below) is the Tauri sidecar/thread; canvas-edge (JS) stays for
+   headless boxes and the npm CLI.
+3. **JS CLI = npm channel and reference implementation**, package by package
+   (`packages/cli-*` boundaries are the porting units). Bun binaries retire
+   when the Rust CLI reaches parity; until then they remain the no-Node
+   fallback.
+4. **Protocol stays JS-owned** (`packages/protocol`): route tables, event
+   names, sync constants and the wire shapes are the contract; Rust gets a
+   generated/mirrored copy checked by a CI test that both agree (hash of
+   the JSON export of `routes.js`/`events.js`/`sync.js` vs the Rust tables).
+
+### What `canvas-core` takes from canvas-fuse (first pass)
+
+| canvas-fuse today | canvas-core module | notes |
+|---|---|---|
+| `config.rs` (remotes.json, device token, `~/.canvas` layout) | `paths`, `remotes`, `device` | same files the JS CLI writes (`config/remotes.json`, `device.json`, `config/mirrors.json`); byte-compatible, no migration |
+| `api.rs` (REST over the workspaces/objects/changes API) | `api` (blocking + async client) | typed against the protocol tables; the fuse render/tree parts stay in fuse |
+| `events.rs` (socket.io subscribe, nudges) | `events` | one client for fuse, daemon and tray |
+| `mirror/store.rs`, `reconcile.rs`, `sync.rs`, `hub.rs`, `cache.rs` | `sync::{ledger, reconcile, jobs, hub, cache}` | the three-way table + conflict protocol from `docs/sync-protocol.md`; redb stays the store |
+| `mirror/control.rs` | `control` | local control socket (`run/edge.sock` / localhost port): status, reload, resync, shutdown — same routes canvas-edge exposes so the CLI drives either |
+| `nudge.rs`, `names.rs`, `fsimpl.rs`, `writes.rs`, `state.rs` | stay in canvas-fuse | FUSE-specific |
+
+### New binaries on the crate
+
+- **`canvas-edged`** (working name; Rust twin of canvas-edge) — real-folder
+  mirrors: `notify` watcher + the shared `sync` engine over a plain
+  directory, state under `<folder>/.workspace/`, reads the CLI's
+  `mirrors.json` (`client: "daemon"`), reports to the hub's mirror registry
+  exactly like canvas-edge. Runs as the desktop sidecar (tray shows sync
+  state, conflicts, pause/resume) and standalone on Linux/macOS/Windows.
+  Supervision by the tray app; pm2 only for the headless JS path.
+- **`canvas` (Rust CLI)** — grows out of the crate command by command in this
+  order: `auth`/`remote` (login, device registration), `remote mirror
+  status|sync|init` (drives edged/fuse over the control socket), `ws`/`ctx`
+  read paths, then writes. Same grammar and flags as the JS CLI (the JS
+  dispatcher's module/noun/verb walk is the spec); `--format json` output
+  must be identical so scripts do not care which binary answers.
+- **canvas-desktop** — Tauri shell embeds the crate: login + device
+  registration on first run, mirror root picker, the same wizard as
+  `canvas remote mirror init` as a native dialog, tray with sync status,
+  launches the web UI. Browser-extension and web UI remain JS.
+
+### Sequencing
+
+- [ ] `crates/canvas-core` scaffold in the monorepo; move `config.rs` +
+      `api.rs` + `events.rs` from canvas-fuse (fuse depends on it by git ref);
+      protocol-tables parity test in ci.yml.
+- [ ] Move the mirror engine (`mirror/*` minus fuse glue) into
+      `canvas-core::sync`; canvas-fuse `--mirror` keeps working on the crate.
+- [ ] `canvas-edged` binary: watcher + engine over a folder; e2e against the
+      dev hub with the phase-3 scenario table (mirror both ways, offline
+      queue, conflict inbox, rename). Ship as `edged-v*` release assets
+      (5 to 8 MB per platform) and as the Tauri sidecar.
+- [ ] Desktop: first-run wizard + tray + sidecar supervision; `desktop-v*`
+      bundles include edged. `canvas desktop install` (CLI package) points at
+      those bundles.
+- [ ] Rust `canvas` CLI: auth/remote/mirror first; release as `cli-v*`
+      assets next to the bun binaries, then replace them.
+- [ ] Retire: bun `build:*` targets, `packages/cli-mirror`'s fuse/daemon
+      supervision (the tray owns it), pm2 paths outside `packages/cli-server`.
+
+### Non-goals / kept as is
+
+- canvas-server stays Node (hub, single DB writer); canvas-stored/synapsd
+  unchanged. The hub-side objects/changes API is the only contract the Rust
+  side needs.
+- No Rust port of the web UI, browser extension or agent runtime.
+- The JS `canvas-edge` is not deleted while any headless deployment uses it.
+
 ## Target topology (monorepo + server + services)
 
 ```
 canvas                  AGPL-only     monorepo (public — decided Slice 1)
   apps/
     web                               ← canvas-web
-    cli                               ← canvas-cli (bun for build/compile)
-    desktop                           ← canvas-desktop (tauri)
+    cli                               ← canvas-cli (npm = lean channel; bun binaries until the Rust CLI)
+    desktop                           ← canvas-desktop (tauri) — the main entry point for most users
     browser-extension                 ← canvas-browser-extensions
     shell                             ← canvas-shell
   packages/
-    protocol                          ← wire contracts + transport adapters, new
-    api-client                        ← ergonomic client over protocol, new
-    schemas                           ← extracted, new
+    protocol                          ← wire contracts (+ sync constants), the contract Rust mirrors
+    api-client                        ← ergonomic client over protocol
+    schemas                           ← extracted
+    cli-host, cli-mirror, cli-server, cli-desktop
+                                      ← CLI SDK + lazily installed CLI packages (cli-*-dist branches)
+  runtimes/
+    edge                              ← canvas-edge (JS device runtime; headless/npm path)
+  crates/                             ← PLANNED: canvas-core (Rust substrate), canvas-edged, canvas (Rust CLI)
     plugin-api                        ← integration/adapter interfaces, new
     messaging                         ← src/services/messaging
     voice                             ← src/services/voice
 
 canvas-stored           AGPL+comm     standalone, ad-hoc reuse
-canvas-fuse             AGPL-only     standalone (Rust — no npm workspace fit)
+canvas-fuse             AGPL-only     standalone (Rust); to depend on crates/canvas-core
 canvas-synapsd          AGPL+comm     standalone, ad-hoc reuse
-canvas-server           AGPL+comm     src/{core,transports,utils} · agentd · edge
+canvas-server           AGPL+comm     src/{core,transports,utils} · agentd (edge moved to canvas/runtimes/edge 2026-09-06)
 ```
 
 Only open cross-repository work belongs here. Implemented behavior belongs in
