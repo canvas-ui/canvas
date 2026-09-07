@@ -1,5 +1,16 @@
 # TODO
 
+## User workflows
+
+### Ad-hoc problem(task) container 
+- User gets an email - API GW connection filtered from SRC A to DST B
+- User creates a context tree folder - customer://ops/infra/apigw/issues/FW SRC A TS
+- User links the aforementioned email to that path based on a subject substring and thread ID
+- Adds/links related notes, documents, emails, chat messages, if running canvas-desktop open windows
+- Pins that task to the in-workspace pin(todo) list
+- Optioanlly adds/assigns people/agents/watcheres
+- Switches to another task
+
 ## Sortable workspace-local + global pinning
 
 We have a new UI comming soon thats in some extent already described in
@@ -11,7 +22,6 @@ Every tree node (folder) - regardless whether of type context or directory - rep
 It holds all data (and later workflows) to help contextualizing work seamlessly.
 
 A pin should
-
 
 
 ## Editor registry + sketches
