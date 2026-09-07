@@ -167,7 +167,8 @@ jobs:
       # npm publish runs AFTER the GitHub Release so a registry hiccup can
       # never cost you the binaries. The CLI's three workspace deps go first —
       # pnpm rewrites "workspace:*" to the real versions when it packs, so
-      # they must already exist on the registry by the time the CLI lands.
+      # they must already exist on the registry by the time the CLI lands
+      # (cli-host included: it is a runtime dependency of the CLI).
       # Each is skipped when that exact version is already published:
       # packages/* bump far less often than the CLI, and a cli-v tag must not
       # fail just because canvas-protocol didn't change since last release.
@@ -189,7 +190,7 @@ jobs:
             echo "::warning title=npm publish skipped::NPM_TOKEN is not set — GitHub Release binaries were published, npm packages were not."
             exit 0
           fi
-          for dir in packages/protocol packages/schemas packages/api-client apps/cli; do
+          for dir in packages/protocol packages/schemas packages/api-client packages/cli-host apps/cli; do
             name=$(node -p "require('./$dir/package.json').name")
             ver=$(node -p "require('./$dir/package.json').version")
             if npm view "$name@$ver" version >/dev/null 2>&1; then

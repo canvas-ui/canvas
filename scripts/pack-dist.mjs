@@ -15,7 +15,8 @@
 // Usage:
 //   node scripts/pack-dist.mjs <target|all> [--out artifacts] [--pack]
 //
-// Targets: web protocol schemas wallpapers api-client edge (see TARGETS).
+// Targets: web protocol schemas wallpapers api-client edge cli-host cli-mirror
+// cli-server cli-desktop (see TARGETS).
 // Output: <out>/dist/<target>/  — a directory ready to `git init` + push as
 // the `<target>-dist` branch (scripts/update-releases.sh) or to `npm pack`
 // (--pack writes <out>/<name>-<version>.tgz for the GitHub Release).
@@ -36,6 +37,14 @@ export const TARGETS = {
     wallpapers: { dir: 'packages/wallpapers' },
     'api-client': { dir: 'packages/api-client' },
     edge: { dir: 'runtimes/edge' },
+    // CLI packages fetched on demand by `canvas package install <key>`: one
+    // self-contained ESM file. A bun-compiled CLI can import an external file
+    // but cannot resolve bare specifiers from it, so nothing may be left to
+    // resolve at runtime — esbuild inlines the SDK, api-client, clack, chalk…
+    'cli-host': { dir: 'packages/cli-host' },
+    'cli-mirror': { dir: 'packages/cli-mirror', bundle: 'src/index.js' },
+    'cli-server': { dir: 'packages/cli-server', bundle: 'src/index.js' },
+    'cli-desktop': { dir: 'packages/cli-desktop', bundle: 'src/index.js' },
 };
 
 const META_FILES = ['package.json', 'LICENSE', 'LICENSE.md', 'NOTICE', 'README.md'];
@@ -76,25 +85,41 @@ function copyPackageFiles(srcDir, pkg, dest, extra = []) {
 }
 
 /**
- * Bundle one non-registry dependency into `stageDir/node_modules/<name>`.
- * Returns its registry dependencies (to merge upward). Nested non-registry
- * deps are refused: keep the graph one level deep and obvious.
+ * Bundle one non-registry dependency into `<parentDir>/node_modules/<name>`.
+ * Its own non-registry deps nest underneath the same way (cli-mirror →
+ * cli-host → api-client → protocol); registry deps are merged upward and
+ * declared once on the artifact, where npm hoists them for every level.
  */
-function bundleDep(stageDir, name, spec, fromDir) {
+function bundleDep(parentDir, name, spec, fromDir) {
     const src = isWorkspace(spec) ? workspaceDir(name) : installedDir(fromDir, name);
     const pkg = readPkg(src);
-    const dest = join(stageDir, 'node_modules', name);
+    const dest = join(parentDir, 'node_modules', name);
     copyPackageFiles(src, pkg, dest);
-    const manifest = { ...pkg };
-    delete manifest.scripts; delete manifest.devDependencies; delete manifest.publishConfig;
-    writeFileSync(join(dest, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
     const deps = {};
+    const optional = { ...(pkg.optionalDependencies || {}) };
+    const nested = [];
     for (const [n, s] of Object.entries(pkg.dependencies || {})) {
-        if (isWorkspace(s) || isGit(s)) throw new Error(`${name} depends on ${n}@${s}: nested non-registry deps are not supported by pack-dist`);
+        if (isWorkspace(s) || isGit(s)) {
+            // Nested copy lives under THIS package; only its registry deps
+            // bubble up (the nested name itself must never reach the artifact's
+            // dependencies — npm would try the registry for it).
+            const sub = bundleDep(dest, n, s, src);
+            nested.push([n, sub.version]);
+            for (const [dn, ds] of Object.entries(sub.deps)) deps[dn] ??= ds;
+            Object.assign(optional, sub.optional);
+            continue;
+        }
         deps[n] = s;
     }
+    const manifest = { ...pkg };
+    delete manifest.scripts; delete manifest.devDependencies; delete manifest.publishConfig;
+    // Same rule as the top level: a bundled copy must be a declared dep at its concrete version.
+    manifest.dependencies = { ...(pkg.dependencies || {}) };
+    for (const [n, v] of nested) manifest.dependencies[n] = v;
+    if (nested.length) manifest.bundleDependencies = nested.map(([n]) => n);
+    writeFileSync(join(dest, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
     // A git dep's optional deps (e.g. lmdb's platform binaries) travel too.
-    return { deps, optional: pkg.optionalDependencies || {}, version: pkg.version };
+    return { deps, optional, version: pkg.version };
 }
 
 function workspaceDir(name) {
@@ -107,7 +132,25 @@ function workspaceDir(name) {
     throw new Error(`workspace package ${name} not found`);
 }
 
-export function stage(targetName, { out = join(root, 'artifacts') } = {}) {
+/** esbuild a package into stage/dist/index.js with every dependency inlined (node builtins stay external). */
+async function bundleSingleFile(srcDir, entry, stageDir) {
+    const esbuild = await import('esbuild');
+    mkdirSync(join(stageDir, 'dist'), { recursive: true });
+    await esbuild.build({
+        entryPoints: [join(srcDir, entry)],
+        outfile: join(stageDir, 'dist', 'index.js'),
+        bundle: true,
+        platform: 'node',
+        format: 'esm',
+        target: 'node20',
+        // CJS deps (debug, chalk's supports-color probe) need a `require` in ESM output.
+        banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
+        logLevel: 'warning',
+        legalComments: 'none',
+    });
+}
+
+export async function stage(targetName, { out = join(root, 'artifacts') } = {}) {
     const t = TARGETS[targetName];
     if (!t) throw new Error(`unknown target '${targetName}' (${Object.keys(TARGETS).join(', ')})`);
     const srcDir = join(root, t.dir);
@@ -133,6 +176,15 @@ export function stage(targetName, { out = join(root, 'artifacts') } = {}) {
         };
         writeFileSync(join(stageDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
         return { stageDir, name: manifest.name, version: manifest.version };
+    }
+
+    if (t.bundle) {
+        await bundleSingleFile(srcDir, t.bundle, stageDir);
+        for (const f of META_FILES) if (f !== 'package.json' && existsSync(join(srcDir, f))) cpSync(join(srcDir, f), join(stageDir, f));
+        const manifest = { ...pkg, exports: { '.': './dist/index.js' }, main: './dist/index.js', files: ['dist'], dependencies: {}, description: `${pkg.description || pkg.name} (single-file dist artifact)`, canvasRev: rev, canvasSource: t.dir };
+        delete manifest.scripts; delete manifest.devDependencies; delete manifest.publishConfig;
+        writeFileSync(join(stageDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
+        return { stageDir, name: manifest.name, version: manifest.version, bundled: ['(inlined)'] };
     }
 
     copyPackageFiles(srcDir, pkg, stageDir);
@@ -179,7 +231,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const doPack = args.includes('--pack');
     const names = which === 'all' ? Object.keys(TARGETS) : which.split(',');
     for (const n of names) {
-        const res = stage(n, { out });
+        const res = await stage(n, { out });
         const extra = res.bundled?.length ? ` (bundled: ${res.bundled.join(', ')})` : '';
         console.log(`${n}: ${res.name}@${res.version} → ${res.stageDir}${extra}`);
         if (doPack) for (const f of pack(res.stageDir, out)) console.log(`  packed ${f}`);

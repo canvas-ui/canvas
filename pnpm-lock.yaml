@@ -14,6 +14,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.4
         version: 9.39.5
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       eslint:
         specifier: ^9.39.4
         version: 9.39.5(jiti@2.7.0)
@@ -75,15 +78,15 @@ importers:
       '@augmentd-labs/canvas-api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@augmentd-labs/canvas-cli-host':
+        specifier: workspace:*
+        version: link:../../packages/cli-host
       '@augmentd-labs/canvas-protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@augmentd-labs/canvas-schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
-      '@clack/prompts':
-        specifier: ^1.7.0
-        version: 1.7.0
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -387,6 +390,36 @@ importers:
       '@augmentd-labs/canvas-protocol':
         specifier: workspace:*
         version: link:../protocol
+
+  packages/cli-desktop:
+    dependencies:
+      '@augmentd-labs/canvas-cli-host':
+        specifier: workspace:*
+        version: link:../cli-host
+
+  packages/cli-host:
+    dependencies:
+      '@augmentd-labs/canvas-api-client':
+        specifier: workspace:*
+        version: link:../api-client
+      '@clack/prompts':
+        specifier: ^1.7.0
+        version: 1.7.0
+      debug:
+        specifier: ^4.4.3
+        version: 4.4.3
+
+  packages/cli-mirror:
+    dependencies:
+      '@augmentd-labs/canvas-cli-host':
+        specifier: workspace:*
+        version: link:../cli-host
+
+  packages/cli-server:
+    dependencies:
+      '@augmentd-labs/canvas-cli-host':
+        specifier: workspace:*
+        version: link:../cli-host
 
   packages/protocol: {}
 

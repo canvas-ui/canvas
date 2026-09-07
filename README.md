@@ -28,6 +28,9 @@ apps/
   shell                  bash client — not an npm package, pnpm skips it
   web                    web UI (vite/react; prebuilt artifact consumed by canvas-server)
 packages/
+  cli-host               CLI extension SDK (prompts, errors, paths, storage, pm2, prefix installs)
+  cli-mirror, cli-server, cli-desktop
+                         lazily installed `canvas` packages (remote mirror / server / desktop)
   protocol               wire contract: envelope, error codes, routes, events, sync constants
   schemas                document schema ids, versions, builders
   api-client             ergonomic REST client over protocol
@@ -58,8 +61,10 @@ dependencies are bundled inside — `scripts/pack-dist.mjs`):
 | `"@augmentd-labs/canvas-api-client": "github:canvas-ui/canvas#api-client-dist"` | `packages/api-client` |
 | `"@augmentd-labs/canvas-schemas": "github:canvas-ui/canvas#schemas-dist"` | `packages/schemas` |
 | `"@augmentd-labs/canvas-wallpapers": "github:canvas-ui/canvas#wallpapers-dist"` | `packages/wallpapers` |
+| `cli-mirror-dist`, `cli-server-dist`, `cli-desktop-dist` (single-file, fetched by `canvas package install`) | `packages/cli-*` |
+| `"@augmentd-labs/canvas-cli-host": "github:canvas-ui/canvas#cli-host-dist"` | `packages/cli-host` (CLI extension SDK) |
 
-`dist.yml` republishes all six on every push to main (only the ones whose
+`dist.yml` republishes all of them on every push to main (only the ones whose
 sources moved); `npm run release:dist` (or `~/Code/canvas/canvas-stack.sh
 --dist`) does the same from a laptop, and `release:<name>` ships one. `ci.yml`
 stages every artifact on each PR and installs the edge one from a git URL, so

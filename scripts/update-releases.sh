@@ -4,7 +4,8 @@
 #   npm run release:web                       build + publish the web-dist branch
 #   npm run release:edge                      publish the edge-dist branch (runtimes/edge)
 #   npm run release:dist                      every dist branch: protocol schemas wallpapers
-#                                             api-client edge web  (scripts/pack-dist.mjs)
+#                                             api-client cli-host cli-mirror cli-server
+#                                             cli-desktop edge web  (scripts/pack-dist.mjs)
 #   npm run release:extension                 tag extension-v<ver> → CI builds both zips
 #   npm run release:cli                       tag cli-v<ver> → CI builds + publishes
 #   npm run release:desktop                   tag desktop-v<ver> → CI builds (multi-OS)
@@ -51,7 +52,7 @@ tree_is_dirty() {
 }
 
 APP="${1:-}"
-[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: web | edge | protocol | schemas | wallpapers | api-client | dist | extension | cli | desktop (see --help)"
+[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: web | edge | protocol | schemas | wallpapers | api-client | cli-host | cli-mirror | cli-server | cli-desktop | dist | extension | cli | desktop (see --help)"
 shift
 
 BUMP=""
@@ -79,7 +80,7 @@ done
 # Tagged apps skip when their current version is already released. Without
 # --if-needed, web always republishes (the branch is idempotent). With
 # --if-needed, web skips too unless something shippable moved.
-DIST_APPS=(protocol schemas wallpapers api-client edge web)
+DIST_APPS=(protocol schemas wallpapers api-client cli-host cli-mirror cli-server cli-desktop edge web)
 if [[ "$APP" == "all" || "$APP" == "dist" ]]; then
     # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
     # files (theme fallbacks etc.), which must not fail the apps after them.
@@ -109,10 +110,14 @@ case "$APP" in
     schemas)    APP_DIR="packages/schemas";       MODE="branch"; TAG_PREFIX="schemas-v";    DIST_BRANCH="schemas-dist" ;;
     wallpapers) APP_DIR="packages/wallpapers";    MODE="branch"; TAG_PREFIX="wallpapers-v"; DIST_BRANCH="wallpapers-dist" ;;
     api-client) APP_DIR="packages/api-client";    MODE="branch"; TAG_PREFIX="api-client-v"; DIST_BRANCH="api-client-dist" ;;
+    cli-host)   APP_DIR="packages/cli-host";      MODE="branch"; TAG_PREFIX="cli-host-v";   DIST_BRANCH="cli-host-dist" ;;
+    cli-mirror) APP_DIR="packages/cli-mirror";    MODE="branch"; TAG_PREFIX="cli-mirror-v"; DIST_BRANCH="cli-mirror-dist" ;;
+    cli-server) APP_DIR="packages/cli-server";    MODE="branch"; TAG_PREFIX="cli-server-v"; DIST_BRANCH="cli-server-dist" ;;
+    cli-desktop) APP_DIR="packages/cli-desktop";  MODE="branch"; TAG_PREFIX="cli-desktop-v"; DIST_BRANCH="cli-desktop-dist" ;;
     extension) APP_DIR="apps/browser-extension"; MODE="ci-tag"; TAG_PREFIX="extension-v" ;;
     cli)       APP_DIR="apps/cli";               MODE="ci-tag"; TAG_PREFIX="cli-v" ;;
     desktop)   APP_DIR="apps/desktop";           MODE="ci-tag"; TAG_PREFIX="desktop-v" ;;
-    *) die "unknown app '$APP' — valid: web, edge, protocol, schemas, wallpapers, api-client, dist, extension, cli, desktop" ;;
+    *) die "unknown app '$APP' — valid: web, edge, protocol, schemas, wallpapers, api-client, cli-host, cli-mirror, cli-server, cli-desktop, dist, extension, cli, desktop" ;;
 esac
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git repository"
