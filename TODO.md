@@ -96,25 +96,24 @@ would open it as the main canvas moving the other one on top of the current one 
 for now)
 
 Where we are heading with this prototype:
-A row of canvases as drawnn below
+A row of canvases as drawn below
+```
+         []
+         []  []
+[pinA] [][][][][]
+[pinB]     [] 
 
-      []
-      []  []
-[pin] [][][][][]
-[pin]     [] 
-
-
-is related to a specific task
+```
+is related to a specific task [pinA]
 Currently, navigating away in the tree menu destroys the old layout but esp in canvas-desktop
 for pinned items we'll use a different setup
-a Task1 item may have 4-5 open canvases (active conversations, open terminal windows etc)
-Switching to task2 will vertically navigate to the task2 row of canvases (navigatable in all 
+a pinA item may have 4-5 open canvases (active conversations, open terminal windows etc)
+Switching to pinB will vertically navigate to the pinB row of canvases (navigatable in all 
 4 directions)
 
-Again, this is a window-management layout that should support orgtanizing canvases in 4 main 
+Again, this is a window-management feature that should support organizing canvases in 4 main 
 directions + tabbed + tiled which is mostly irrelevant in a webui setting but just to 
 give you an idea where we are heading.
-
 
 
 ## Editor registry + sketches
