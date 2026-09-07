@@ -15,13 +15,23 @@
 
 We have a new UI comming soon thats in some extent already described in
 
-With that being said, untill all the drawings and flow diagrams are ready, we can implement some of the features in the current "classical" UI too.
+With that being said, untill all the drawings and flow diagrams are ready, we can implement 
+some of the features in the current "classical" UI too.
 
 One important one - pins
-Every tree node (folder) - regardless whether of type context or directory - represents something like a task container
-It holds all data (and later workflows) to help contextualizing work seamlessly.
+Every tree node (folder) - regardless whether of type context or directory - represents 
+something like a task container, It holds all data (and later workflows) to help contextualize 
+work seamlessly.
 
-A pin should
+Related to the use-case above, a user should be able to pin a specific path to allow easier 
+"context switches" for tasks he is activelly working on. We will require the same functionality
+for at least the desktop UI so most probably, it should be implemented on the backend too(separate
+API endpoints maybe). 
+Pins are per-workspace, one should be able to right-click on a path and Pin/Unpin it
+We should add a Pins tab into M2
+- M2 tabs should be sortable, users who default to the directory tree view should have the option to 
+ 
+Let me descope the UI update for now, we'll work on it once the above landed
 
 
 ## Editor registry + sketches
