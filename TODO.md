@@ -27,6 +27,7 @@ Related to the use-case above, a user should be able to pin a specific path to a
 "context switches" for tasks he is activelly working on. We will require the same functionality
 for at least the desktop UI so most probably, it should be implemented on the backend too(separate
 API endpoints maybe). 
+
 Pins are per-workspace, one should be able to right-click on a path and Pin/Unpin it
 We should add a Pins tab into M2
 - M2 tabs should be sortable, users who default to the directory tree view should have the option to 
@@ -53,10 +54,68 @@ LANDED 2026-09-07 (server 2.8.5, web 2.9.1, protocol routes `workspaces.pins`):
 
 ## (legacy) UI revamp
 
-The most beautiful user interfaces (to me) are a combination of analog and digital elements.
-Same as with architecture where natural elements like wood and stone create pleasing harmonies
-when combined with artificial surfaces like glass, (brass) metal or contrasting accents like 
-switches - 
+Lets do an experiment
+Not sure whether this can be considered a "theme" or a revamp as stated in the title - lets 
+go with the simplest least-complex approach.
+
+Same as with architecture where natural materials like wood and stone create pleasing harmonies
+when combined with artificial surfaces like glass, (brass) metal and/or contrasting accents
+(switches, faucets, radiators, lightning) - the most beautiful user interfaces (to me) are 
+a combination of analog-like, rough and/or layered and/or structured and smooth, clean "digital" 
+elements interacting in a physically believable way.
+
+Our UI should present its elements in a physically-believable way too(we'll dive into the 
+contrast and color space later).
+
+Lets start with the layout. As with the "Next" UI concept, main controlls should be 
+Left/Right/Up/Down (keyboard handle + arrow-keys or swipe) with both, horizontal and vertical
+spaces virtually devided into rows and columns.
+
+Lets take the workspace flow as an example.
+M0 is the most-left element, M1 comes/appears to the right to it. M2 should not overlay M1, 
+it should appear next to it focusing it into the view but kb left or swipe-left would navigate 
+back to M1.
+
+Clicking an M2 item opens-up a 1/sqrt(2) ratio ISO 216 content card/canvas (same top-bottom 
+margin, only width gets calculated) - keeping m2 left-most and said card as the main area
+(user shoul be able to extend to full view size as is the case now by default)
+
+Menu is considered part of the backround surface area. When you click on Workspaces, inactive 
+workspaces in M1 are still considered on the same layer, activating a workspace elevates it 
+(our card-like shadow-dropping design).
+
+
+Now the difference compared to the menu.
+Shift+click on a tree item opens a new canvas tab (for now) on the same columnd space as the
+main canvas(lets say canvasA)
+Opening a modal or another canvas from canvasA will open a canvas next to it
+Returning back wont auto-close it
+Opening canvasA > Modal with 4 relationships to other documents would open a related document
+right to it, focusing it. Returning back (kb left or swipe) and shift+opening a 2nd relationship
+would open it as the main canvas moving the other one on top of the current one (or into a tab
+for now)
+
+Where we are heading with this prototype:
+A row of canvases as drawnn below
+
+      []
+      []  []
+[pin] [][][][][]
+[pin]     [] 
+
+
+is related to a specific task
+Currently, navigating away in the tree menu destroys the old layout but esp in canvas-desktop
+for pinned items we'll use a different setup
+a Task1 item may have 4-5 open canvases (active conversations, open terminal windows etc)
+Switching to task2 will vertically navigate to the task2 row of canvases (navigatable in all 
+4 directions)
+
+Again, this is a window-management layout that should support orgtanizing canvases in 4 main 
+directions + tabbed + tiled which is mostly irrelevant in a webui setting but just to 
+give you an idea where we are heading.
+
+
 
 ## Editor registry + sketches
 
