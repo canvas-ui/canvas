@@ -51,6 +51,13 @@ LANDED 2026-09-07 (server 2.8.5, web 2.9.1, protocol routes `workspaces.pins`):
 - Not done: tile stats (doc counts), global cross-workspace pin list, desktop UI.
 
 
+## (legacy) UI revamp
+
+The most beautiful user interfaces (to me) are a combination of analog and digital elements.
+Same as with architecture where natural elements like wood and stone create pleasing harmonies
+when combined with artificial surfaces like glass, (brass) metal or contrasting accents like 
+switches - 
+
 ## Editor registry + sketches
 
 SHIPPED 2026-09-02 (web 2.8.0, synapsd 3.19.0, server 2.6.3): editor registry
