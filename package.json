@@ -1,0 +1,30 @@
+{
+  "name": "@augmentd-labs/canvas-cli-mirror",
+  "version": "0.2.0",
+  "description": "Canvas CLI package: `canvas remote mirror` — workspace mirrors on this device (canvas-edge / canvas-fuse), first-run wizard, pm2 supervision (single-file dist artifact)",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "canvasCli": {
+    "package": "mirror",
+    "mount": "remote",
+    "size": "~1 MB (+ canvas-edge runtime on first mirror)"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/canvas-ui/canvas.git",
+    "directory": "packages/cli-mirror"
+  },
+  "main": "./dist/index.js",
+  "canvasRev": "1b488ae",
+  "canvasSource": "packages/cli-mirror"
+}
