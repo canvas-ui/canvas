@@ -1,0 +1,30 @@
+{
+  "name": "@augmentd-labs/canvas-cli-desktop",
+  "version": "0.1.0",
+  "description": "Canvas CLI package: `canvas desktop` — fetch and launch the Canvas desktop app release for this platform (single-file dist artifact)",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "canvasCli": {
+    "package": "desktop",
+    "mount": null,
+    "size": "<1 MB (+ the desktop app download, ~100 MB)"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/canvas-ui/canvas.git",
+    "directory": "packages/cli-desktop"
+  },
+  "main": "./dist/index.js",
+  "canvasRev": "1b488ae",
+  "canvasSource": "packages/cli-desktop"
+}
