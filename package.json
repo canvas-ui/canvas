@@ -1,0 +1,30 @@
+{
+  "name": "@augmentd-labs/canvas-cli-server",
+  "version": "0.2.0",
+  "description": "Canvas CLI package: `canvas server` — install and supervise a local canvas-server (pm2) (single-file dist artifact)",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "canvasCli": {
+    "package": "server",
+    "mount": null,
+    "size": "<1 MB (+ a canvas-server checkout on install)"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/canvas-ui/canvas.git",
+    "directory": "packages/cli-server"
+  },
+  "main": "./dist/index.js",
+  "canvasRev": "1b488ae",
+  "canvasSource": "packages/cli-server"
+}
