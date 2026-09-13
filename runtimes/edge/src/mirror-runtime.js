@@ -17,6 +17,11 @@ const STATUS_HEARTBEAT_MS = 60000;
  * folders, and the Mirror engine reconciling between them. All state lives in
  * `<folder>/.workspace/` (mirror.json, db/stored, cache, tmp, trash,
  * conflicts) — the folder is self-describing and movable.
+ *
+ * `direction` (bi | pull | push, canvas-stored Mirror) comes from the mirror
+ * entry. Every status report carries the (docId, version) pairs agreed since
+ * the last report (`applied`); the first report after start sends the whole
+ * ledger as `full` so a hub that lost its replica table rebuilds it.
  */
 export class MirrorRuntime {
     #mirror;
@@ -29,6 +34,8 @@ export class MirrorRuntime {
     #reporter = null;
     #lastReport = 0;
     #reportTimer = null;
+    #pendingApplied = [];
+    #needFull = true;
 
     constructor({ mirror, hub, identity, logger }) {
         this.#mirror = mirror;
@@ -49,6 +56,7 @@ export class MirrorRuntime {
             workspaceId: this.#mirror.workspaceId, workspaceName: this.#mirror.workspaceName, backend: 'workspace:home',
             deviceId: this.#identity.deviceId, client: 'daemon', createdAt: new Date().toISOString(),
             pins: this.#mirror.pins || [], ignore: this.#mirror.ignore || [], conflicts: this.#mirror.conflicts, deletes: this.#mirror.deletes,
+            direction: this.#mirror.direction || 'bi',
         }, null, 2));
 
         const hubExclusions = await this.#fetchHubExclusions();
@@ -69,8 +77,11 @@ export class MirrorRuntime {
             id: this.#mirror.id, local: 'local', remote: 'canvas:hub', trash: 'trash', conflicts: 'conflicts',
             prefixes: this.#mirror.pins || [], ignore: this.#mirror.ignore || [],
             deletes: this.#mirror.deletes || 'propagate', conflictMode: this.#mirror.conflicts || 'prompt',
+            direction: this.#mirror.direction || 'bi',
             deviceId: this.#identity.deviceId, deviceName: this.#identity.deviceName,
         });
+        this.#needFull = true;
+        this.#pendingApplied = [];
         this.#engine.on('status', () => this.#scheduleReport());
         this.#engine.on('conflict', (c) => this.#logger.info({ mirror: this.id, key: c?.key }, 'conflict recorded'));
         await this.#engine.start();
@@ -93,7 +104,7 @@ export class MirrorRuntime {
 
     status() {
         const s = typeof this.#engine?.status === 'function' ? this.#engine.status() : {};
-        return { id: this.id, workspace: this.#mirror.workspaceName, hub: this.#hub.id, folder: this.folder, pins: this.#mirror.pins || [], conflictsMode: this.#mirror.conflicts, ...s };
+        return { id: this.id, workspace: this.#mirror.workspaceName, hub: this.#hub.id, folder: this.folder, pins: this.#mirror.pins || [], conflictsMode: this.#mirror.conflicts, direction: this.#mirror.direction || 'bi', ...s };
     }
 
     nudge() { this.#engine?.nudge?.(); }
@@ -148,15 +159,40 @@ export class MirrorRuntime {
         this.#lastReport = Date.now();
         const s = this.status();
         const ws = encodeURIComponent(this.#mirror.workspaceName);
-        await fetch(`${this.#hub.url}${this.#hub.apiBase}/workspaces/${ws}/mirrors/${encodeURIComponent(this.#identity.deviceId)}/status`, {
-            method: 'POST',
-            headers: { authorization: `Bearer ${this.#hub.token}`, 'content-type': 'application/json' },
-            body: JSON.stringify({
-                backend: 'workspace:home', client: 'daemon', path: this.folder, prefixes: this.#mirror.pins || [],
-                cursor: Number(s.cursor) || 0, pending: Number(s.pending) || 0, failed: Number(s.failed) || 0,
-                conflicts: Number(s.conflicts) || 0, skipped: Number(s.skipped) || 0, state: String(s.state || 'idle'),
-                lastSync: s.lastSyncAt ? new Date(s.lastSyncAt).toISOString() : undefined, lastError: s.lastError || null, version: 'canvas-edge/1',
-            }),
-        }).catch(() => {});
+        // Protection evidence: what this replica holds. A failed report keeps
+        // the delta for the next one; a full snapshot supersedes any delta.
+        const engine = this.#engine;
+        const full = this.#needFull;
+        const delta = typeof engine.takeApplied === 'function' ? engine.takeApplied() : [];
+        this.#pendingApplied = full ? [] : mergePairs(this.#pendingApplied, delta);
+        const applied = full ? (typeof engine.appliedSnapshot === 'function' ? engine.appliedSnapshot() : []) : this.#pendingApplied;
+        try {
+            const res = await fetch(`${this.#hub.url}${this.#hub.apiBase}/workspaces/${ws}/mirrors/${encodeURIComponent(this.#identity.deviceId)}/status`, {
+                method: 'POST',
+                headers: { authorization: `Bearer ${this.#hub.token}`, 'content-type': 'application/json' },
+                body: JSON.stringify({
+                    backend: 'workspace:home', client: 'daemon', path: this.folder, prefixes: this.#mirror.pins || [],
+                    cursor: Number(s.cursor) || 0, pending: Number(s.pending) || 0, failed: Number(s.failed) || 0,
+                    conflicts: Number(s.conflicts) || 0, reverted: Number(s.reverted) || 0, skipped: Number(s.skipped) || 0, state: String(s.state || 'idle'),
+                    direction: s.direction || 'bi',
+                    lastSync: s.lastSyncAt ? new Date(s.lastSyncAt).toISOString() : undefined, lastError: s.lastError || null, version: 'canvas-edge/2',
+                    ...(applied.length || full ? { applied, full } : {}),
+                }),
+            });
+            if (res.ok) { this.#pendingApplied = []; if (full) this.#needFull = false; }
+            else if (!full) { /* keep the delta */ }
+        } catch {
+            // offline: the delta (or the need for a full snapshot) survives until the next report
+            if (!full) engine.restoreApplied?.(delta);
+        }
     }
 }
+
+// Newer version per docId wins; order is irrelevant to the hub.
+function mergePairs(a, b) {
+    const best = new Map(a);
+    for (const [docId, version] of b) if (!(best.get(docId) > version)) best.set(docId, version);
+    return [...best.entries()];
+}
+
+
