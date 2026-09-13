@@ -434,7 +434,7 @@ importers:
         version: link:../../packages/protocol
       canvas-stored:
         specifier: github:canvas-ui/canvas-stored#main
-        version: https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/61fa9aed3d411bfbc3476d971adc723e18572f87
+        version: https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/85b9f6cb5cc6cf709d6f118a84baed6e4876b29b
       fastify:
         specifier: ^4.29.1
         version: 4.29.1
@@ -3711,9 +3711,9 @@ packages:
   canvas-roundrect-polyfill@0.0.1:
     resolution: {integrity: sha512-yWq+R3U3jE+coOeEb3a3GgE2j/0MMiDKM/QpLb6h9ihf5fGY9UXtvK9o4vNqjWXoZz7/3EaSVU3IX53TvFFUOw==}
 
-  canvas-stored@https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/61fa9aed3d411bfbc3476d971adc723e18572f87:
-    resolution: {tarball: https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/61fa9aed3d411bfbc3476d971adc723e18572f87}
-    version: 1.8.0
+  canvas-stored@https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/85b9f6cb5cc6cf709d6f118a84baed6e4876b29b:
+    resolution: {tarball: https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/85b9f6cb5cc6cf709d6f118a84baed6e4876b29b}
+    version: 1.9.0
     engines: {node: '>=20.0.0'}
 
   chalk@4.1.2:
@@ -10032,7 +10032,7 @@ snapshots:
 
   canvas-roundrect-polyfill@0.0.1: {}
 
-  canvas-stored@https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/61fa9aed3d411bfbc3476d971adc723e18572f87:
+  canvas-stored@https://codeload.github.com/canvas-ui/canvas-stored/tar.gz/85b9f6cb5cc6cf709d6f118a84baed6e4876b29b:
     dependencies:
       cacache: 20.0.4
       chokidar: 5.0.0
