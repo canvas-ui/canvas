@@ -1,0 +1,24 @@
+# One canvas-edge container = one workspace mirror. Copy, fill in, `docker compose up -d`.
+# Synology: Container Manager → Project → paste this file; bind the shared folder's
+# native path (e.g. /volume1/work/Augmentd) at /data, keep /config and /state on a
+# private volume so the share holds user files only.
+services:
+  canvas-edge:
+    image: ghcr.io/canvas-ui/canvas-edge:latest    # or: build: { context: ., dockerfile: runtimes/edge/Dockerfile }
+    container_name: canvas-edge-augmentd
+    restart: unless-stopped
+    environment:
+      CANVAS_HUB_URL: https://canvas.example.org
+      CANVAS_HUB_TOKEN: canvas-…                     # a workspace/device/API token minted on the hub
+      CANVAS_WORKSPACE: augmentd
+      CANVAS_DIRECTION: pull                         # backup target; use `bi` while seeding
+      CANVAS_DEVICE_ID: nas-synology
+      CANVAS_DEVICE_NAME: Synology NAS
+      # CANVAS_CONFLICTS: prompt   CANVAS_DELETES: propagate   CANVAS_PINS: Accounting/**
+    volumes:
+      - /volume1/work/Augmentd:/data
+      - canvas-edge-config:/config
+      - canvas-edge-state:/state
+volumes:
+  canvas-edge-config:
+  canvas-edge-state:

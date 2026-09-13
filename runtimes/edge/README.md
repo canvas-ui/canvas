@@ -3,7 +3,7 @@
 The device-side Canvas runtime. One Node process, two jobs:
 
 - **mirror** — keep real folders in sync with hub workspaces (canvas-stored's
-  `Mirror` engine, state under `<folder>/.workspace/`). Configured by the CLI's
+  `Mirror` engine, state under `<folder>/.workspace/` or an external state dir). Configured by the CLI's
   `~/.canvas/config/mirrors.json` (`canvas remote mirror init`), driven over a local
   control socket (`~/.canvas/run/edge.sock`, a localhost port on Windows).
 - **tunnel** — `EdgeClient` dials out to a canvas-server, announces what this
@@ -37,6 +37,30 @@ install when the binary is missing. The
 artifact bundles its workspace/git dependencies (canvas-protocol,
 canvas-stored) and keeps only registry dependencies external — see
 `scripts/pack-dist.mjs`.
+
+## Container (NAS, servers)
+
+`runtimes/edge/Dockerfile` installs the `edge-dist` artifact into an
+unprivileged image; one container mirrors one workspace, configured by
+environment (no CLI needed on the host):
+
+```
+docker build -t canvas-edge -f runtimes/edge/Dockerfile .
+docker run -d --name canvas-edge-augmentd --restart unless-stopped \
+  -e CANVAS_HUB_URL=https://canvas.example.org -e CANVAS_HUB_TOKEN=canvas-… \
+  -e CANVAS_WORKSPACE=augmentd -e CANVAS_DIRECTION=pull -e CANVAS_DEVICE_ID=nas-synology \
+  -v /volume1/work/Augmentd:/data -v canvas-edge-config:/config -v canvas-edge-state:/state \
+  canvas-edge
+```
+
+`docker/docker-compose.example.yml` is the same as a compose project (what
+Synology Container Manager takes). `canvas remote mirror docker <workspace>`
+prints one filled in from a remote you are logged in to. State (ledger,
+queue, cache, trash, conflicts) lives under `/state/<mirror id>`
+(`CANVAS_EDGE_STATE_ROOT`), so the mirrored share holds user files only; a
+non-container mirror gets the same with `--state-dir` (`stateDir` in
+mirrors.json). `CANVAS_DIRECTION=pull` makes the container a backup target
+(hub is the only writer), `bi` while seeding from existing files.
 
 Protocol: canvas-server `docs/canvas-edge-protocol.md` (tunnel) and
 `docs/sync-protocol.md` (file plane).

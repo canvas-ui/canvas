@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import pino from 'pino';
-import { EDGE_PATHS, daemonMirrors, deviceIdentity, hubFor } from './env.js';
+import { EDGE_PATHS, STATE_ROOT, daemonMirrors, deviceIdentity, ensureEnvConfig, hubFor } from './env.js';
 import { MirrorRuntime } from './mirror-runtime.js';
 import { startControl } from './control.js';
 
@@ -22,6 +22,14 @@ export async function main(argv = process.argv.slice(2)) {
         : pino({ level: process.env.LOG_LEVEL || 'info' }, pino.destination({ dest: EDGE_PATHS.log, sync: false }));
 
     const runtimes = new Map();
+
+    // Container / env-driven setup: one remote + one mirror from the environment.
+    try {
+        const seeded = ensureEnvConfig();
+        if (seeded) logger.info({ mirror: seeded.id, folder: seeded.mountpoint, direction: seeded.direction, stateRoot: STATE_ROOT }, 'mirror configured from environment');
+    } catch (err) {
+        logger.error({ err: err?.message }, 'env-driven mirror config failed');
+    }
 
     const load = async () => {
         const wanted = daemonMirrors();

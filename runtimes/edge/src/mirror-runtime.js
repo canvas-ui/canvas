@@ -16,7 +16,12 @@ const STATUS_HEARTBEAT_MS = 60000;
  * backend speaking the sync protocol to the hub, `trash`/`conflicts` side
  * folders, and the Mirror engine reconciling between them. All state lives in
  * `<folder>/.workspace/` (mirror.json, db/stored, cache, tmp, trash,
- * conflicts) — the folder is self-describing and movable.
+ * conflicts) — the folder is self-describing and movable — unless the mirror
+ * names a `stateDir` (or the daemon a CANVAS_EDGE_STATE_ROOT), in which case
+ * the folder holds user files only and everything else lives there. Staging
+ * (temp) must share a filesystem with the folder for atomic placement, so
+ * it stays under the state dir only when that is on the same device and
+ * falls back to `<folder>/.stored-tmp` otherwise.
  *
  * `direction` (bi | pull | push, canvas-stored Mirror) comes from the mirror
  * entry. Every status report carries the (docId, version) pairs agreed since
@@ -47,23 +52,36 @@ export class MirrorRuntime {
     get id() { return this.#mirror.id; }
     get folder() { return this.#mirror.mountpoint; }
 
+    get stateDir() { return this.#mirror.stateDir ? path.resolve(this.#mirror.stateDir) : path.join(this.folder, '.workspace'); }
+
     async start() {
         const folder = this.folder;
-        const internal = path.join(folder, '.workspace');
-        for (const d of ['db/stored', 'cache', 'tmp', 'trash', 'conflicts']) fs.mkdirSync(path.join(internal, d), { recursive: true });
+        const internal = this.stateDir;
+        const external = internal !== path.join(folder, '.workspace');
+        for (const d of ['db/stored', 'cache', 'trash', 'conflicts']) fs.mkdirSync(path.join(internal, d), { recursive: true });
+        let tempDir = path.join(internal, 'tmp');
+        if (external) {
+            const sameDevice = (() => { try { return fs.statSync(folder).dev === fs.statSync(internal).dev; } catch { return false; } })();
+            if (!sameDevice) {
+                tempDir = path.join(folder, '.stored-tmp');
+                this.#logger.info({ mirror: this.id, stateDir: internal }, 'state dir is on another filesystem — staging under <folder>/.stored-tmp');
+            }
+        }
+        fs.mkdirSync(tempDir, { recursive: true });
         fs.writeFileSync(path.join(internal, 'mirror.json'), JSON.stringify({
             version: 1, mirrorId: this.#mirror.id, hub: { id: this.#hub.id, url: this.#hub.url },
             workspaceId: this.#mirror.workspaceId, workspaceName: this.#mirror.workspaceName, backend: 'workspace:home',
             deviceId: this.#identity.deviceId, client: 'daemon', createdAt: new Date().toISOString(),
             pins: this.#mirror.pins || [], ignore: this.#mirror.ignore || [], conflicts: this.#mirror.conflicts, deletes: this.#mirror.deletes,
             direction: this.#mirror.direction || 'bi',
+            stateDir: external ? internal : null, tempDir,
         }, null, 2));
 
         const hubExclusions = await this.#fetchHubExclusions();
         this.#stored = new Stored({ root: path.join(internal, 'db', 'stored'), cache: { path: path.join(internal, 'cache') }, checksums: ['sha256'] });
         this.#stored.on('error', (err) => this.#logger.warn({ mirror: this.id, err: err?.message }, 'stored error'));
         this.#stored.addBackend('local', {
-            driver: 'file', root: folder, watch: true, tempDir: '.workspace/tmp', followSymlinks: false, stabilityThreshold: 2000,
+            driver: 'file', root: folder, watch: true, tempDir, followSymlinks: false, stabilityThreshold: 2000,
             ignored: [...new Set([...WORKSPACE_INTERNAL_EXCLUSIONS, ...DEFAULT_SYNC_EXCLUSIONS, ...hubExclusions, ...MIRROR_IGNORE_DEFAULTS, ...(this.#mirror.ignore || [])])],
         });
         this.#stored.addBackend('trash', { driver: 'file', root: path.join(internal, 'trash'), watch: false });
@@ -104,7 +122,7 @@ export class MirrorRuntime {
 
     status() {
         const s = typeof this.#engine?.status === 'function' ? this.#engine.status() : {};
-        return { id: this.id, workspace: this.#mirror.workspaceName, hub: this.#hub.id, folder: this.folder, pins: this.#mirror.pins || [], conflictsMode: this.#mirror.conflicts, direction: this.#mirror.direction || 'bi', ...s };
+        return { id: this.id, workspace: this.#mirror.workspaceName, hub: this.#hub.id, folder: this.folder, stateDir: this.stateDir, pins: this.#mirror.pins || [], conflictsMode: this.#mirror.conflicts, direction: this.#mirror.direction || 'bi', ...s };
     }
 
     nudge() { this.#engine?.nudge?.(); }
