@@ -60,12 +60,12 @@ export class MirrorRuntime {
         const external = internal !== path.join(folder, '.workspace');
         for (const d of ['db/stored', 'cache', 'trash', 'conflicts']) fs.mkdirSync(path.join(internal, d), { recursive: true });
         let tempDir = path.join(internal, 'tmp');
-        if (external) {
-            const sameDevice = (() => { try { return fs.statSync(folder).dev === fs.statSync(internal).dev; } catch { return false; } })();
-            if (!sameDevice) {
-                tempDir = path.join(folder, '.stored-tmp');
-                this.#logger.info({ mirror: this.id, stateDir: internal }, 'state dir is on another filesystem — staging under <folder>/.stored-tmp');
-            }
+        if (external && !canRenameInto(path.join(internal, 'tmp'), folder)) {
+            // st_dev lies for bind mounts (one disk, two mounts, rename refused):
+            // only an actual rename tells. Staging on the folder's own mount
+            // keeps placement a single rename instead of copy + rename.
+            tempDir = path.join(folder, '.stored-tmp');
+            this.#logger.info({ mirror: this.id, stateDir: internal }, 'state dir is on another mount — staging under <folder>/.stored-tmp');
         }
         fs.mkdirSync(tempDir, { recursive: true });
         fs.writeFileSync(path.join(internal, 'mirror.json'), JSON.stringify({
@@ -101,6 +101,9 @@ export class MirrorRuntime {
         this.#needFull = true;
         this.#pendingApplied = [];
         this.#engine.on('status', () => this.#scheduleReport());
+        this.#engine.on('job:failed', (j) => this.#logger.warn({ mirror: this.id, job: j?.kind, key: j?.key, attempts: j?.attempts, err: j?.error?.message }, 'sync job failed'));
+        this.#engine.on('revert', (e) => this.#logger.info({ mirror: this.id, key: e?.key, copy: e?.copy }, 'local edit reverted (pull mirror), copy kept'));
+        this.#engine.on('skip', (e) => this.#logger.info({ mirror: this.id, key: e?.key, reason: e?.reason }, 'key skipped'));
         this.#engine.on('conflict', (c) => this.#logger.info({ mirror: this.id, key: c?.key }, 'conflict recorded'));
         await this.#engine.start();
         await this.#connectSocket();
@@ -204,6 +207,19 @@ export class MirrorRuntime {
             if (!full) engine.restoreApplied?.(delta);
         }
     }
+}
+
+// Can a file staged in `from` be renamed into `into`? Probes with a real
+// rename of an empty file (the only honest answer for bind mounts).
+function canRenameInto(from, into) {
+    try {
+        fs.mkdirSync(from, { recursive: true });
+        const probe = path.join(from, `.probe-${process.pid}-${Date.now()}`);
+        const target = path.join(into, `.stored-tmp-probe-${process.pid}-${Date.now()}`);
+        fs.writeFileSync(probe, '');
+        try { fs.renameSync(probe, target); fs.unlinkSync(target); return true; }
+        catch (err) { fs.rmSync(probe, { force: true }); if (err.code === 'EXDEV') return false; throw err; }
+    } catch { return false; }
 }
 
 // Newer version per docId wins; order is irrelevant to the hub.

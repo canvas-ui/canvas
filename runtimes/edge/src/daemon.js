@@ -3,7 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import pino from 'pino';
-import { EDGE_PATHS, STATE_ROOT, daemonMirrors, deviceIdentity, ensureEnvConfig, hubFor } from './env.js';
+import { EDGE_PATHS, STATE_ROOT, daemonMirrors, deviceIdentity, ensureDeviceToken, ensureEnvConfig, hubFor } from './env.js';
 import { MirrorRuntime } from './mirror-runtime.js';
 import { startControl } from './control.js';
 
@@ -39,8 +39,12 @@ export async function main(argv = process.argv.slice(2)) {
         }
         for (const mirror of wanted) {
             if (runtimes.has(mirror.id)) continue;
-            const hub = hubFor(mirror.remote);
+            let hub = hubFor(mirror.remote);
             if (!hub?.token) { logger.warn({ mirror: mirror.id, remote: mirror.remote }, 'no credentials for hub — skipped'); continue; }
+            if (!hub.deviceId) {
+                try { hub = await ensureDeviceToken(mirror.remote, { logger }); }
+                catch (err) { logger.warn({ mirror: mirror.id, remote: mirror.remote, err: err?.message }, 'device registration failed — reporting under the user token'); }
+            }
             const identity = deviceIdentity(hub);
             const rt = new MirrorRuntime({ mirror, hub, identity, logger });
             try {

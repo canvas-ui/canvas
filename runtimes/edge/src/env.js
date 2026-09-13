@@ -3,6 +3,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import EdgeClient from './EdgeClient.js';
 
 /*
  * The daemon's own home. Deliberately NOT src/env.js: there CANVAS_USER_HOME
@@ -125,6 +126,29 @@ export function deviceIdentity(hub = null) {
     if (process.env.CANVAS_DEVICE_ID) return { deviceId: String(process.env.CANVAS_DEVICE_ID).replace(/[^a-zA-Z0-9._-]+/g, '-'), deviceName: name };
     if (rec?.deviceId) return { deviceId: String(rec.deviceId), deviceName: name };
     return { deviceId: `host-${os.hostname()}-${os.userInfo().username}`.replace(/[^a-zA-Z0-9._-]+/g, '-'), deviceName: name };
+}
+
+/*
+ * An env-seeded remote starts with a user/API token. The hub keys mirror
+ * status (and replica protection) by DEVICE, so on first contact the daemon
+ * registers itself (`POST /auth/devices/register`) under its CANVAS_DEVICE_ID
+ * and keeps the device token in remotes.json; from then on hubFor() presents
+ * that token and the hub sees one stable device. CLI-managed remotes already
+ * carry a device token and are left alone.
+ */
+export async function ensureDeviceToken(remoteId, { logger = null } = {}) {
+    const remotes = readJson(EDGE_PATHS.remotes, {}) || {};
+    const r = remotes[remoteId];
+    if (!r?.url || r.source !== 'env' || r.device?.token || !r.auth?.token) return hubFor(remoteId);
+    const identity = deviceIdentity(null);
+    const paired = await EdgeClient.pair({
+        serverUrl: r.url, userToken: r.auth.token, name: identity.deviceName, type: 'edge',
+        deviceId: identity.deviceId, hostname: os.hostname(), platform: process.platform, arch: process.arch,
+    });
+    remotes[remoteId] = { ...r, device: { deviceId: paired.deviceId || identity.deviceId, token: paired.token, registeredAt: new Date().toISOString() } };
+    writeJson(EDGE_PATHS.remotes, remotes);
+    logger?.info?.({ remote: remoteId, deviceId: remotes[remoteId].device.deviceId }, 'registered as a device on the hub');
+    return hubFor(remoteId);
 }
 
 /** Hub url + token (+ the device id the token belongs to) for a remote id. */
