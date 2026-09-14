@@ -1,0 +1,1 @@
+import{a as e,o as t}from"./utils-BxVxyehK.js";function n(...n){return e(t(n))}function r(){return typeof window<`u`&&window.matchMedia(`(pointer: coarse)`).matches}export{r as n,n as t};

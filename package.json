@@ -1,0 +1,11 @@
+{
+  "name": "canvas-web",
+  "version": "2.11.2",
+  "description": "canvas-web (prebuilt dist artifact)",
+  "license": "AGPL-3.0-or-later",
+  "files": [
+    "dist"
+  ],
+  "canvasRev": "36edd4f",
+  "canvasSource": "apps/web"
+}
