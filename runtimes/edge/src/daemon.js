@@ -3,8 +3,9 @@
 import fs from 'fs';
 import path from 'path';
 import pino from 'pino';
-import { EDGE_PATHS, STATE_ROOT, daemonMirrors, deviceIdentity, ensureDeviceToken, ensureEnvConfig, hubFor } from './env.js';
+import { EDGE_PATHS, STATE_ROOT, daemonMirrors, deviceIdentity, ensureDeviceToken, ensureEnvConfig, fuseMirrors, hubFor } from './env.js';
 import { MirrorRuntime } from './mirror-runtime.js';
+import { FuseRuntime } from './fuse-runtime.js';
 import { startControl } from './control.js';
 
 /*
@@ -33,7 +34,8 @@ export async function main(argv = process.argv.slice(2)) {
 
     const load = async () => {
         const wanted = daemonMirrors();
-        const wantedIds = new Set(wanted.map((m) => m.id));
+        const fuse = fuseMirrors();
+        const wantedIds = new Set([...wanted, ...fuse].map((m) => m.id));
         for (const [id, rt] of runtimes) {
             if (!wantedIds.has(id)) { await rt.stop().catch(() => {}); runtimes.delete(id); logger.info({ mirror: id }, 'mirror stopped (removed from config)'); }
         }
@@ -54,6 +56,17 @@ export async function main(argv = process.argv.slice(2)) {
                 logger.error({ mirror: mirror.id, err: err?.message }, 'mirror failed to start');
             }
         }
+        // fuse units: canvas-fuse mounts this daemon supervises (one process per workspace).
+        for (const mirror of fuse) {
+            if (runtimes.has(mirror.id)) continue;
+            const rt = new FuseRuntime({ mirror, logger });
+            try {
+                await rt.start();
+                runtimes.set(mirror.id, rt);
+            } catch (err) {
+                logger.error({ unit: mirror.id, err: err?.message }, 'fuse unit failed to start');
+            }
+        }
     };
 
     let stopping = false;
@@ -71,5 +84,5 @@ export async function main(argv = process.argv.slice(2)) {
 
     const control = await startControl({ runtimes, reload: load, shutdown, logger });
     await load();
-    logger.info({ device: deviceIdentity().deviceId, mirrors: runtimes.size }, 'canvas-edge running');
+    logger.info({ device: deviceIdentity().deviceId, mirrors: runtimes.size, fuse: [...runtimes.values()].filter((r) => r.unit === 'fuse').length }, 'canvas-edge running');
 }

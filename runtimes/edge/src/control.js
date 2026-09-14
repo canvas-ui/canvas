@@ -12,8 +12,13 @@ export async function startControl({ runtimes, reload, shutdown, logger }) {
     const app = Fastify({ logger: false });
     const byId = (id) => runtimes.get(id) || [...runtimes.values()].find((r) => r.status().workspace === id) || null;
 
-    app.get('/status', async () => ({ pid: process.pid, mirrors: [...runtimes.values()].map((r) => r.status()) }));
-    app.get('/mirrors', async () => [...runtimes.values()].map((r) => r.status()));
+    // fuse units read `canvas-fuse status --json` (a process); refresh them before answering.
+    const snapshot = async () => {
+        for (const r of runtimes.values()) if (typeof r.refresh === 'function') await r.refresh().catch(() => null);
+        return [...runtimes.values()].map((r) => r.status());
+    };
+    app.get('/status', async () => ({ pid: process.pid, mirrors: await snapshot() }));
+    app.get('/mirrors', async () => snapshot());
     app.post('/mirrors/:id/resync', async (req, reply) => {
         const r = byId(req.params.id);
         if (!r) return reply.code(404).send({ error: 'no such mirror' });

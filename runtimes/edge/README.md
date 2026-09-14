@@ -38,6 +38,17 @@ artifact bundles its workspace/git dependencies (canvas-protocol,
 canvas-stored) and keeps only registry dependencies external — see
 `scripts/pack-dist.mjs`.
 
+## fuse units (on-demand mounts, e.g. a GPU workstation)
+
+A mirrors.json entry with `client: 'fuse', managed: 'edge'` is a **fuse unit**:
+the daemon spawns `canvas-fuse mount -w <ws> <root> --remote <id> --mirror …`
+attached, restarts it with backoff when it dies, reads `canvas-fuse status
+--json` for its state and unmounts it on stop — one process per workspace
+under one root (`<root>/<folder>`), as many units as workspaces. canvas-fuse
+stays a plain executable (`CANVAS_FUSE_BIN`, `~/.cargo/bin`, PATH); its
+on-demand namespace, content cache, pins and LRU are its own. `canvas remote
+mirror add <ws> --edge` (or `… supervisor <ws> edge`) configures one.
+
 ## Container (NAS, servers)
 
 `runtimes/edge/Dockerfile` installs the `edge-dist` artifact into an

@@ -125,7 +125,7 @@ export class MirrorRuntime {
 
     status() {
         const s = typeof this.#engine?.status === 'function' ? this.#engine.status() : {};
-        return { id: this.id, workspace: this.#mirror.workspaceName, hub: this.#hub.id, folder: this.folder, stateDir: this.stateDir, pins: this.#mirror.pins || [], conflictsMode: this.#mirror.conflicts, direction: this.#mirror.direction || 'bi', ...s };
+        return { id: this.id, unit: 'mirror', workspace: this.#mirror.workspaceName, hub: this.#hub.id, folder: this.folder, stateDir: this.stateDir, pins: this.#mirror.pins || [], conflictsMode: this.#mirror.conflicts, direction: this.#mirror.direction || 'bi', ...s };
     }
 
     nudge() { this.#engine?.nudge?.(); }

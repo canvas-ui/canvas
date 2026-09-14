@@ -167,6 +167,12 @@ export function hubFor(remoteId) {
     };
 }
 
+/** FUSE mounts this daemon supervises: `client: 'fuse', managed: 'edge'` entries (docs/durable-workspaces.md step 5). */
+export function fuseMirrors() {
+    const cfg = readJson(EDGE_PATHS.mirrors, { mirrors: [] }) || {};
+    return (Array.isArray(cfg.mirrors) ? cfg.mirrors : []).filter((m) => m && m.client === 'fuse' && m.managed === 'edge' && !m.paused);
+}
+
 /** Mirrors this daemon owns: `client: 'daemon'` entries of the CLI's mirrors.json. */
 export function daemonMirrors() {
     const cfg = readJson(EDGE_PATHS.mirrors, { mirrors: [] }) || {};

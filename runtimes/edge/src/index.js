@@ -19,7 +19,8 @@
 export { default as EdgeClient } from './EdgeClient.js';
 export { connectRemotes, buildAnnounce } from './runtime.js';
 export { readWorkspaceConfig, listRemotes, saveRemote, removeRemote } from './remote-config.js';
-export { EDGE_HOME, EDGE_PATHS, deviceIdentity, hubFor, daemonMirrors } from './env.js';
+export { EDGE_HOME, EDGE_PATHS, deviceIdentity, hubFor, daemonMirrors, fuseMirrors } from './env.js';
 export { MirrorRuntime } from './mirror-runtime.js';
+export { FuseRuntime, fuseMountArgs, fuseBinary } from './fuse-runtime.js';
 export { startControl } from './control.js';
 export { main } from './daemon.js';
