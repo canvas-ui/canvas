@@ -1,0 +1,114 @@
+Canvas
+Copyright (C) 2023-2026 Jozef Melich
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Contact:
+    lic@augmentd.eu       licensing
+    contrib@augmentd.eu   contributions
+    security@augmentd.eu  security
+
+
+NETWORK USE
+-----------
+
+Section 13 of the AGPL applies to this software. If you run a modified version
+and let users interact with it over a network, those users must be able to
+obtain the corresponding source of your modified version.
+
+This server implements its side of that obligation. Every HTTP response carries
+an `X-Source-Code` header, and `GET /rest/v2/ping` (no authentication required)
+reports the running version, revision and source URL:
+
+    curl -sI https://your-host/ | grep -i x-source-code
+    curl -s  https://your-host/rest/v2/ping
+
+If you deploy a modified version, repoint these at the repository that publishes
+your changes. Set `CANVAS_SOURCE_URL`, and set `CANVAS_SOURCE_COMMIT` where the
+build has no git metadata, as in the container image. Removing the notice
+instead of repointing it does not satisfy the licence.
+
+
+COPYRIGHT AND COMMERCIAL LICENSING
+----------------------------------
+
+Copyright in this codebase is held by Jozef Melich. Augmentd s.r.o. holds an
+exclusive licence to it, including the right to grant sublicences, and is the
+entity authorised to issue commercial licences for Canvas.
+
+The AGPL is not the only option for the components marked [dual] below. If its
+terms do not work for you, most often because you want to build a commercial or
+hosted product on Canvas without publishing your own changes, a separate
+commercial licence is available for those components, and no AGPL obligation
+applies to it. See COMMERCIAL.md.
+
+The Canvas clients marked [AGPL] are available under the AGPL-3.0-or-later and
+under no other terms. No commercial licence is offered for them to anyone,
+including holders of a commercial licence to the server runtime. The clients
+stay free software in all cases.
+
+Licensing enquiries: lic@augmentd.eu
+
+    Augmentd s.r.o.
+    DUETT Business Center
+    Námestie Osloboditeľov 3/A
+    040 01 Košice, Slovakia
+    Company ID: 45331936
+    VAT ID: SK2022968717
+    https://augmentd.eu
+
+
+COMPONENTS
+----------
+
+Canvas is assembled from several repositories. They are not all licensed the
+same way. Every component is available under the AGPL-3.0-or-later; only those
+marked [dual] are also available under a commercial licence. Components in
+separate repositories each carry their own LICENSE and NOTICE.
+
+The server runtime and the services behind it, together the engine:
+
+    [dual]  canvas-server   this repository, server runtime, transports, core
+              src/services/messaging  notification and chat channels
+              src/services/voice      speech-to-text and text-to-speech
+              src/core/agent          agent runtime
+    [dual]  canvas-synapsd  (dependency) context indexing engine
+    [dual]  canvas-stored   (dependency) blob storage
+    [dual]  canvas-inferd   (dependency) inference service
+    [dual]  canvas-agentd   (repository) agent runtime service, consolidating
+                            the former canvas-neurald
+    [dual]  packages/*      (monorepo)   shared libraries: protocol, schemas,
+                            api-client
+
+The client applications, AGPL-only for everyone. Most live in the Canvas
+monorepo, https://github.com/canvas-ui/canvas:
+
+    [AGPL]  apps/cli               (monorepo) command-line client
+    [AGPL]  apps/web               (monorepo) web UI, served by this server
+    [AGPL]  apps/shell             (monorepo) shell client and applets
+    [AGPL]  apps/desktop           (monorepo) desktop app
+    [AGPL]  apps/browser-extension (monorepo) Chrome and Firefox extensions
+    [AGPL]  canvas-fuse            (repository) FUSE filesystem client
+
+A commercial licence to a [dual] component grants no rights over an [AGPL] one.
+If you hold a commercial licence to the server runtime and you modify and convey
+the CLI, the AGPL applies to that CLI in full. The same holds for the web UI:
+it is AGPL-only, and serving a modified web UI to users over a network obliges
+you to offer them its corresponding source, whatever engine licence you hold.
+
+
+THIRD-PARTY CODE
+----------------
+
+Third-party dependencies keep their own licences. See the dependency manifests
+and node_modules for their terms. This notice covers Canvas code only.
