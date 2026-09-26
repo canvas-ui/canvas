@@ -21,6 +21,7 @@ export function unwrap(body) {
         const message = body.message || 'Request failed';
         const detail = typeof body.payload === 'string' ? body.payload.trim() : '';
         throw new CanvasError(detail && !message.includes(detail) ? `${message}: ${detail}` : message, {
+            retryable: body.retryable, reason: body.reason, stoppedAt: body.stoppedAt, hint: body.hint,
             code: body.code,
             statusCode: body.statusCode,
             status: body.statusCode

@@ -9,13 +9,14 @@
  * the pre-monorepo cli error carried the number there.
  */
 export class CanvasError extends Error {
-    constructor(message, { code, statusCode, status, cause } = {}) {
+    constructor(message, { code, statusCode, status, cause, retryable, reason, stoppedAt, hint } = {}) {
         super(message);
         this.name = 'CanvasError';
         this.code = code || 'CANVAS_ERROR';
         this.statusCode = statusCode ?? status;
         this.status = status ?? statusCode;
         if (cause) this.cause = cause;
+        Object.assign(this, { retryable, reason, stoppedAt, hint });
     }
 }
 

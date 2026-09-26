@@ -1,7 +1,7 @@
 export declare class CanvasError extends Error {
     constructor(
         message: string,
-        options?: { code?: string; statusCode?: number; status?: number; cause?: unknown }
+        options?: { code?: string; statusCode?: number; status?: number; cause?: unknown; retryable?: boolean; reason?: string; stoppedAt?: string | null; hint?: string }
     );
     /** Machine string: envelope `code` (e.g. 'WORKSPACE_NOT_ACTIVE') or 'CANVAS_ERROR'. */
     code: string;
@@ -9,6 +9,10 @@ export declare class CanvasError extends Error {
     /** Alias of statusCode (historical cli field). */
     status?: number;
     cause?: unknown;
+    retryable?: boolean;
+    reason?: string;
+    stoppedAt?: string | null;
+    hint?: string;
 }
 export declare class AuthError extends CanvasError {
     constructor(message: string);
@@ -78,7 +82,7 @@ export interface WorkspacesApi {
     create(data: unknown): Promise<any>;
     update(id: string, data: unknown): Promise<any>;
     delete(id: string): Promise<any>;
-    start(id: string): Promise<any>;
+    start(id: string, options?: { passphrase?: string; withoutSecrets?: boolean }): Promise<any>;
     stop(id: string): Promise<any>;
     status(id: string): Promise<any>;
     stats(id: string): Promise<any>;

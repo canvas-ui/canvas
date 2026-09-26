@@ -54,3 +54,15 @@ test('non-envelope bodies pass through', () => {
     // payload key alone is not an envelope (needs status too)
     assert.deepEqual(unwrap({ payload: 1 }), { payload: 1 });
 });
+
+test('stopped workspace errors preserve non-retryable owner-start instructions', () => {
+    assert.throws(() => unwrap({ status: 'error', statusCode: 423, code: 'WORKSPACE_STOPPED',
+        message: 'Workspace is stopped', payload: null, retryable: false, reason: 'server-restart',
+        stoppedAt: '2026-09-26T00:00:00Z', hint: 'Ask the owner to start workspace Work' }), (error) => {
+        assert.equal(error.code, 'WORKSPACE_STOPPED');
+        assert.equal(error.retryable, false);
+        assert.equal(error.reason, 'server-restart');
+        assert.equal(error.hint, 'Ask the owner to start workspace Work');
+        return true;
+    });
+});

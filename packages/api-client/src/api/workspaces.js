@@ -12,7 +12,7 @@ export function makeWorkspacesApi(c) {
         create: (data) => c.post(ws.collection(), data),
         update: (id, data) => c.put(ws.byId(id), data),
         delete: (id) => c.delete(ws.byId(id)),
-        start: (id) => c.post(ws.start(id)),
+        start: (id, options = {}) => c.post(ws.start(id), options),
         stop: (id) => c.post(ws.stop(id)),
         status: (id) => c.get(ws.status(id)),
         stats: (id) => c.get(ws.stats(id)),
