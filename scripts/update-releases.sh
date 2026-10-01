@@ -79,7 +79,9 @@ done
 # Tagged apps skip when their current version is already released. Without
 # --if-needed, dist branches always republish (idempotent). With --if-needed,
 # they skip unless something shippable moved.
-DIST_APPS=(protocol schemas wallpapers api-client cli-host cli-mirror cli-server cli-desktop edge)
+# Only what the CLI still fetches from git; the libraries are on npm
+# (scripts/publish-npm.mjs) and their old *-dist branches are frozen.
+DIST_APPS=(cli-mirror cli-server cli-desktop edge)
 if [[ "$APP" == "all" || "$APP" == "dist" ]]; then
     # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
     # files (theme fallbacks etc.), which must not fail the apps after them.

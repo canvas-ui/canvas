@@ -1,9 +1,9 @@
 name: dist
 
 # Publishes the git-fetchable artifact branches on every push to main:
-# protocol-dist, schemas-dist, wallpapers-dist, api-client-dist, edge-dist,
-# web-dist (scripts/pack-dist.mjs via scripts/update-releases.sh). Consumers
-# pin "github:canvas-ui/canvas#<name>-dist" and pick a push up on their next
+# edge-dist and the cli-*-dist branches the CLI fetches
+# (scripts/pack-dist.mjs via scripts/update-releases.sh). Consumers
+# pin "github:canvas-ui/canvas-common#<name>-dist" and pick a push up on their next
 # `npm update`. --if-needed skips a branch whose sources did not move since
 # its recorded canvasRev, so an unrelated commit republishes nothing.
 #
