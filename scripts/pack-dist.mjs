@@ -13,8 +13,13 @@
 // merged into the artifact's. Consumers with npm's allow-git=root would refuse
 // a transitive git dep; bundling sidesteps that and pins what was built.
 //
+// Registry mode ({ registry: true }, used by scripts/publish-npm.mjs): workspace
+// deps become `^<version>` dependencies on the sibling packages published to
+// npm instead of being bundled; git deps are still bundled. The root LICENSE is
+// copied into any package that has none of its own.
+//
 // Usage:
-//   node scripts/pack-dist.mjs <target|all> [--out artifacts] [--pack]
+//   node scripts/pack-dist.mjs <target|all> [--out artifacts] [--pack] [--registry]
 //
 // Targets: protocol schemas wallpapers api-client edge cli-host cli-mirror
 // cli-server cli-desktop (see TARGETS).
@@ -149,7 +154,7 @@ async function bundleSingleFile(srcDir, entry, stageDir) {
     });
 }
 
-export async function stage(targetName, { out = join(root, 'artifacts') } = {}) {
+export async function stage(targetName, { out = join(root, 'artifacts'), registry = false } = {}) {
     const t = TARGETS[targetName];
     if (!t) throw new Error(`unknown target '${targetName}' (${Object.keys(TARGETS).join(', ')})`);
     const srcDir = join(root, t.dir);
@@ -187,11 +192,13 @@ export async function stage(targetName, { out = join(root, 'artifacts') } = {}) 
     }
 
     copyPackageFiles(srcDir, pkg, stageDir);
+    if (!existsSync(join(stageDir, 'LICENSE')) && existsSync(join(root, 'LICENSE'))) cpSync(join(root, 'LICENSE'), join(stageDir, 'LICENSE'));
     const dependencies = {};
     const optionalDependencies = { ...(pkg.optionalDependencies || {}) };
     const bundled = [];
     for (const [name, spec] of Object.entries(pkg.dependencies || {})) {
         if (!isWorkspace(spec) && !isGit(spec)) { dependencies[name] = spec; continue; }
+        if (registry && isWorkspace(spec)) { dependencies[name] = `^${readPkg(workspaceDir(name)).version}`; continue; }
         const { deps, optional, version } = bundleDep(stageDir, name, spec, srcDir);
         bundled.push(name);
         // A bundled dep must ALSO be a declared dependency (its concrete version),
@@ -228,9 +235,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const outIdx = args.indexOf('--out');
     const out = outIdx >= 0 ? resolve(args[outIdx + 1]) : join(root, 'artifacts');
     const doPack = args.includes('--pack');
+    const registry = args.includes('--registry');
     const names = which === 'all' ? Object.keys(TARGETS) : which.split(',');
     for (const n of names) {
-        const res = await stage(n, { out });
+        const res = await stage(n, { out, registry });
         const extra = res.bundled?.length ? ` (bundled: ${res.bundled.join(', ')})` : '';
         console.log(`${n}: ${res.name}@${res.version} → ${res.stageDir}${extra}`);
         if (doPack) for (const f of pack(res.stageDir, out)) console.log(`  packed ${f}`);

@@ -1,0 +1,47 @@
+name: npm-publish
+
+# Publishes the shared packages (protocol, schemas, wallpapers, api-client,
+# cli-host, edge) to npm under @augmentd-labs — every version npm does not
+# have yet (scripts/publish-npm.mjs), so an unbumped push publishes nothing.
+# Release = bump the package version and push main.
+#
+# Auth is npm trusted publishing: each package on npmjs.com names this repo
+# and THIS workflow file as its trusted publisher, GitHub OIDC replaces any
+# token, and provenance is attached. Renaming this file breaks publishing
+# until the npm settings are updated too.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'runtimes/edge/**'
+      - 'scripts/pack-dist.mjs'
+      - 'scripts/publish-npm.mjs'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/npm-publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1; node 22 ships npm 10.
+      - run: npm install -g npm@latest
+      # pack-dist bundles edge's git dep (canvas-stored) from node_modules.
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/publish-npm.mjs

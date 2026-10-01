@@ -30,7 +30,7 @@ concurrency:
 jobs:
   # The *-dist branches themselves are pushed by scripts/update-releases.sh
   # (CI never writes to the repo); this job pins a tagged edge version as a
-  # tarball on the GitHub Release and publishes it to npm once a token exists.
+  # tarball on the GitHub Release. npm publishing is npm-publish.yml's job.
   edge:
     if: startsWith(github.ref_name, 'edge-v')
     runs-on: ubuntu-latest
@@ -49,7 +49,6 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @augmentd-labs/canvas-edge run test
       - run: node scripts/pack-dist.mjs edge --out artifacts --pack
@@ -67,20 +66,6 @@ jobs:
           files: |
             artifacts/*.tgz
             artifacts/SHA256SUMS
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::warning title=npm publish skipped::NPM_TOKEN is not set — the GitHub Release tarball was published, npm was not."
-            exit 0
-          fi
-          ver=$(node -p "require('./runtimes/edge/package.json').version")
-          if npm view "@augmentd-labs/canvas-edge@$ver" version >/dev/null 2>&1; then
-            echo "already published — skipping"; exit 0
-          fi
-          cd artifacts/dist/edge && npm publish --access public
 
   cli:
     if: startsWith(github.ref_name, 'cli-v')
