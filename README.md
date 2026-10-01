@@ -2,11 +2,19 @@
   <img src="https://raw.githubusercontent.com/canvas-ai/.github/main/banners/canvas-banner_1200x480.jpg" alt="Canvas" width="100%" />
 </p>
 
-# Canvas
+# Canvas common
 
-Monorepo for the Canvas UI(OS) client apps and the shared packages they
-are built on. The server ([canvas-server](https://github.com/canvas-ui/canvas-server))
-lives in its own repository and consumes the shared packages
+Shared packages of Canvas UI(OS) — published to npm under `@augmentd-labs` —
+plus the `canvas-edge` device runtime. Every client lives in its own
+repository with its own release pipeline:
+
+| repo | what |
+|---|---|
+| [canvas-server](https://github.com/canvas-ui/canvas-server) | the server |
+| [canvas-web](https://github.com/canvas-ui/canvas-web) | web UI (`@augmentd-labs/canvas-web`) |
+| [canvas-cli](https://github.com/canvas-ui/canvas-cli) | `canvas` CLI + lazily installed CLI packages + canvas-shell |
+| [canvas-desktop](https://github.com/canvas-ui/canvas-desktop) | desktop app (moving out of `apps/desktop`) |
+| [canvas-browser-extension](https://github.com/canvas-ui/canvas-browser-extension) | browser extension (moving out of `apps/browser-extension`) |
 
 ## Project screenshots
 
@@ -21,16 +29,10 @@ lives in its own repository and consumes the shared packages
 ## Layout
 
 ```
-apps/
-  cli                    Canvas CLI (bun-compiled binaries)
-  desktop                Tauri desktop app (frontend builds in CI; Rust bundle needs the Tauri toolchain)
+apps/                    (interim — moving to their own repos)
+  desktop                Tauri desktop app
   browser-extension      Chromium + Firefox extension (esbuild)
-  shell                  bash client — not an npm package, pnpm skips it
-  web                    web UI (vite/react; prebuilt artifact consumed by canvas-server)
 packages/
-  cli-host               CLI extension SDK (prompts, errors, paths, storage, pm2, prefix installs)
-  cli-mirror, cli-server, cli-desktop
-                         lazily installed `canvas` packages (remote mirror / server / desktop)
   protocol               wire contract: envelope, error codes, routes, events, sync constants
   schemas                document schema ids, versions, builders
   api-client             ergonomic REST client over protocol
@@ -41,10 +43,7 @@ integrations/
   kde                    desktop share bridge: Dolphin "Send to Canvas" + selected-text capture
 ```
 
-- [`apps/cli`](apps/cli/README.md) — Canvas CLI (bun-compiled binaries)
-- [`apps/desktop`](apps/desktop/README.md) — Tauri desktop app
-- [`apps/browser-extension`](apps/browser-extension/README.md) — Chromium + Firefox extension
-- [`runtimes/edge`](runtimes/edge/README.md) — `canvas-edge` daemon (`canvas mirror edge install`)
+- [`runtimes/edge`](runtimes/edge/README.md) — `canvas-edge` daemon (`canvas remote mirror edge install`)
 
 ## Shared packages on npm
 
@@ -60,27 +59,18 @@ no token lives anywhere, and every version carries provenance.
 | `@augmentd-labs/canvas-schemas` | `packages/schemas` |
 | `@augmentd-labs/canvas-api-client` | `packages/api-client` |
 | `@augmentd-labs/canvas-wallpapers` | `packages/wallpapers` |
-| `@augmentd-labs/canvas-cli-host` | `packages/cli-host` (CLI extension SDK) |
 | `@augmentd-labs/canvas-edge` | `runtimes/edge` |
 
 The web UI lives in [canvas-web](https://github.com/canvas-ui/canvas-web) and
 is published as `@augmentd-labs/canvas-web`.
 
-### Remaining `*-dist` branches
+### The old `*-dist` branches
 
-What the CLI still fetches straight from git — `edge-dist` and the single-file
-`cli-mirror-dist`, `cli-server-dist`, `cli-desktop-dist` — is still staged by
-`scripts/pack-dist.mjs` and published to `<name>-dist` branches. The library
-branches (`protocol-dist`, …) are frozen: no longer updated, kept so older
-lockfiles still install.
-
-`dist.yml` republishes those branches on every push to main (only the ones whose
-sources moved); `npm run release:dist` (or `~/Code/canvas/canvas-stack.sh
---dist`) does the same from a laptop, and `release:<name>` ships one. `ci.yml`
-stages every artifact on each PR and installs the edge one from a git URL, so
-a broken bundle fails review rather than a release. `housekeeping.yml` keeps
-the last 5 runs per workflow and the last 5 releases per app (older tags go
-with them). `edge-v*` tags also pin a tarball on the GitHub Release.
+Before the npm switch (2026-10) consumers installed `github:canvas-ui/canvas#<name>-dist`
+branches. They are frozen — no longer updated, kept so older lockfiles still
+install. `ci.yml` stages every npm package on each PR and smoke-tests the edge
+tarball; `housekeeping.yml` keeps the last 5 runs per workflow and the last 5
+releases per app.
 
 ## Development
 
@@ -88,7 +78,7 @@ with them). `edge-v*` tags also pin a tarball on the GitHub Release.
 pnpm install
 pnpm test          # package test suites (node --test)
 pnpm run lint      # root eslint over packages/ + per-app lint
-pnpm run build     # per-package dev builds (apps/cli → bun compile)
+pnpm run build     # per-package dev builds
 ```
 
 pnpm is deliberate: its strict `node_modules` makes an undeclared dependency an

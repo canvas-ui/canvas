@@ -22,17 +22,17 @@ canvas-edge                     # detached, logs to ~/.canvas/var/log/canvas-edg
 
 ## Install
 
-Not on npm yet. The pipeline publishes a self-contained artifact branch,
-`edge-dist`. The CLI fetches it into its own prefix:
+Published to npm as `@augmentd-labs/canvas-edge` (canvas-common's
+npm-publish.yml, on a version bump). The CLI fetches it into its own prefix:
 
 ```
 canvas remote mirror edge install      # → ~/.canvas/edge/node_modules/@augmentd-labs/canvas-edge
-canvas remote mirror edge update       # latest edge-dist + restart the daemon
+canvas remote mirror edge update       # latest from npm + restart the daemon
 ```
 
-(`npm install --ignore-scripts github:canvas-ui/canvas#edge-dist` in any
-project does the same; avoid `npm -g` — global installs of git packages with
-bundled deps came out incomplete on npm 11.) `canvas remote mirror init` offers the
+(`npm install --ignore-scripts @augmentd-labs/canvas-edge` in any project does
+the same; avoid `npm -g` — global installs of packages with bundled deps came
+out incomplete on npm 11.) `canvas remote mirror init` offers the
 install when the binary is missing. The
 artifact bundles its workspace/git dependencies (canvas-protocol,
 canvas-stored) and keeps only registry dependencies external — see
@@ -51,7 +51,7 @@ mirror add <ws> --edge` (or `… supervisor <ws> edge`) configures one.
 
 ## Container (NAS, servers)
 
-`runtimes/edge/Dockerfile` installs the `edge-dist` artifact into an
+`runtimes/edge/Dockerfile` installs the npm package into an
 unprivileged image; one container mirrors one workspace, configured by
 environment (no CLI needed on the host):
 

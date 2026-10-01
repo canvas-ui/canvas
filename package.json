@@ -12,13 +12,10 @@
     "lint": "eslint . --no-error-on-unmatched-pattern && pnpm -r --if-present --filter '!canvas-monorepo' run lint",
     "format": "prettier --write \"packages/**/*.{js,md,json}\"",
     "changeset": "changeset",
-    "pack:dist": "node scripts/pack-dist.mjs all",
-    "release:edge": "bash scripts/update-releases.sh edge",
-    "release:dist": "bash scripts/update-releases.sh dist",
     "release:extension": "bash scripts/update-releases.sh extension",
-    "release:cli": "bash scripts/update-releases.sh cli",
     "release:desktop": "bash scripts/update-releases.sh desktop",
-    "release:all": "bash scripts/update-releases.sh all"
+    "release:all": "bash scripts/update-releases.sh all",
+    "publish:npm": "node scripts/publish-npm.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

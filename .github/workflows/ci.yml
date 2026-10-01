@@ -16,40 +16,24 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - uses: oven-sh/setup-bun@v2
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run test
-      # Build every shipped target on every PR, not just the dev binary: bun
-      # cross-compiles all five from this one Linux runner in well under a
-      # minute, and building them only at tag time meant a broken target was
-      # discovered during a release instead of during review.
-      - name: Build CLI binaries (all release targets)
-        run: |
-          pnpm --filter @augmentd-labs/canvas-cli run build:linux
-          pnpm --filter @augmentd-labs/canvas-cli run build:linux-arm
-          pnpm --filter @augmentd-labs/canvas-cli run build:macos
-          pnpm --filter @augmentd-labs/canvas-cli run build:macos-arm
-          pnpm --filter @augmentd-labs/canvas-cli run build:windows
-      - name: Verify CLI binaries
-        run: bash apps/cli/scripts/verify-binaries.sh "$(node -p "require('./apps/cli/package.json').version")"
       # Desktop frontend and native installers are built by the desktop job.
       - run: pnpm --filter canvas-browser-extension run build
-      # Every git-fetchable artifact (protocol, schemas, wallpapers,
-      # api-client, edge) must stage as a self-contained package on every PR,
-      # so a broken bundle fails review, not `npm run release:dist`.
-      - name: Stage dist artifacts (pack-dist)
+      # Every npm package must stage as a self-contained package on every PR
+      # (registry mode, exactly what npm-publish.yml publishes), so a broken
+      # package fails review, not the publish.
+      - name: Stage npm packages
         run: |
-          node scripts/pack-dist.mjs all --out artifacts --pack
+          node scripts/pack-dist.mjs all --registry --out artifacts --pack
           ls -la artifacts/*.tgz
-      - name: Smoke-test the edge artifact from a git URL
+      - name: Smoke-test the edge package from its tarball
         run: |
           set -e
-          bare=$(mktemp -d); git init -q --bare -b edge-dist "$bare"  # HEAD must resolve after the push, or npm's git resolver fails
-          ( cd artifacts/dist/edge && git init -q -b edge-dist && git add -A -f \
-            && git -c user.name=ci -c user.email=ci@canvas commit -q -m edge-dist && git push -q "$bare" edge-dist )
+          tgz=$(ls "$PWD"/artifacts/augmentd-labs-canvas-edge-*.tgz)
           consumer=$(mktemp -d); cd "$consumer"; npm init -y >/dev/null
-          npm install --ignore-scripts --no-audit --no-fund "git+file://$bare#edge-dist"
+          npm install --ignore-scripts --no-audit --no-fund "$tgz"
           test -d node_modules/@augmentd-labs/canvas-edge/node_modules/canvas-stored
           CANVAS_USER_HOME=/tmp/edge-ci timeout 8 node node_modules/.bin/canvas-edge --foreground || [ $? -eq 124 ]
 

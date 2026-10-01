@@ -1,34 +1,23 @@
 #!/usr/bin/env bash
-# update-releases.sh — ONE command to release any app in this monorepo.
+# update-releases.sh — release the apps still in this repo (interim: both
+# move to their own repos, canvas-browser-extension and canvas-desktop).
 #
-#   npm run release:edge                      publish the edge-dist branch (runtimes/edge)
-#   npm run release:dist                      every dist branch: protocol schemas wallpapers
-#                                             api-client cli-host cli-mirror cli-server
-#                                             cli-desktop edge  (scripts/pack-dist.mjs)
 #   npm run release:extension                 tag extension-v<ver> → CI builds both zips
-#   npm run release:cli                       tag cli-v<ver> → CI builds + publishes
 #   npm run release:desktop                   tag desktop-v<ver> → CI builds (multi-OS)
-#   npm run release:all                       all of the above; already-released
-#                                             versions are skipped, dist branches republish
+#   npm run release:all                       both; already-released versions are skipped
 #
 #   any of the above -- --bump patch|minor|major   bump the app version first (committed)
-#   branch apps     -- --tag                       ALSO tag <app>-v<ver> when unreleased (pinned tarball via CI)
 #   any             -- --if-needed                 skip if nothing shipped since last release;
-#                                                  patch-bump tagged apps whose code moved
+#                                                  patch-bump when code moved
 #   any             -- --no-push                   stop before pushing, print what would run
 #   any             -- --dry-run                   print the plan, change nothing
 #   any             -- --allow-dirty               skip the clean-tree check (hacking only)
 #
+# The shared packages publish to npm (scripts/publish-npm.mjs, npm-publish.yml);
+# the web UI and the CLI release from canvas-web and canvas-cli.
+#
 # Per-app release modes (why they differ):
-#   edge, protocol, schemas, wallpapers, api-client, cli-*
-#              stage a self-contained package (scripts/pack-dist.mjs: registry
-#              deps only, workspace/git deps bundled) → force-push it to the
-#              `<app>-dist` branch. Consumers pin the branch straight from git:
-#              "@augmentd-labs/canvas-edge": "github:canvas-ui/canvas-common#edge-dist"
-#              and re-resolve on `npm update <name>`. `dist` = all of them in order.
-#              (The web UI releases from canvas-ui/canvas-web.)
 #   extension  tag extension-v<ver> + push — release.yml builds both zips.
-#   cli        tag cli-v<ver> + push — release.yml builds and publishes.
 #   desktop    tag desktop-v<ver> + push — release.yml builds (needs CI's
 #              multi-OS runners; deliberately NOT built locally).
 #
@@ -51,7 +40,7 @@ tree_is_dirty() {
 }
 
 APP="${1:-}"
-[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: edge | protocol | schemas | wallpapers | api-client | cli-host | cli-mirror | cli-server | cli-desktop | dist | extension | cli | desktop (see --help)"
+[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: extension | desktop | all (see --help)"
 shift
 
 BUMP=""
@@ -81,7 +70,7 @@ done
 # they skip unless something shippable moved.
 # Only what the CLI still fetches from git; the libraries are on npm
 # (scripts/publish-npm.mjs) and their old *-dist branches are frozen.
-DIST_APPS=(cli-mirror cli-server cli-desktop edge)
+DIST_APPS=()
 if [[ "$APP" == "all" || "$APP" == "dist" ]]; then
     # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
     # files (theme fallbacks etc.), which must not fail the apps after them.
@@ -90,7 +79,7 @@ if [[ "$APP" == "all" || "$APP" == "dist" ]]; then
     fi
     rc=0
     apps=("${DIST_APPS[@]}")
-    [[ "$APP" == "all" ]] && apps+=(extension cli desktop)
+    [[ "$APP" == "all" ]] && apps+=(extension desktop)
     for app in "${apps[@]}"; do
         say "── $app ─────────────────────────────"
         bash "$0" "$app" --skip-existing --allow-dirty \
@@ -105,19 +94,9 @@ fi
 
 # ── App recipes ──────────────────────────────────────────────────────────────
 case "$APP" in
-    edge)       APP_DIR="runtimes/edge";          MODE="branch"; TAG_PREFIX="edge-v";       DIST_BRANCH="edge-dist" ;;
-    protocol)   APP_DIR="packages/protocol";      MODE="branch"; TAG_PREFIX="protocol-v";   DIST_BRANCH="protocol-dist" ;;
-    schemas)    APP_DIR="packages/schemas";       MODE="branch"; TAG_PREFIX="schemas-v";    DIST_BRANCH="schemas-dist" ;;
-    wallpapers) APP_DIR="packages/wallpapers";    MODE="branch"; TAG_PREFIX="wallpapers-v"; DIST_BRANCH="wallpapers-dist" ;;
-    api-client) APP_DIR="packages/api-client";    MODE="branch"; TAG_PREFIX="api-client-v"; DIST_BRANCH="api-client-dist" ;;
-    cli-host)   APP_DIR="packages/cli-host";      MODE="branch"; TAG_PREFIX="cli-host-v";   DIST_BRANCH="cli-host-dist" ;;
-    cli-mirror) APP_DIR="packages/cli-mirror";    MODE="branch"; TAG_PREFIX="cli-mirror-v"; DIST_BRANCH="cli-mirror-dist" ;;
-    cli-server) APP_DIR="packages/cli-server";    MODE="branch"; TAG_PREFIX="cli-server-v"; DIST_BRANCH="cli-server-dist" ;;
-    cli-desktop) APP_DIR="packages/cli-desktop";  MODE="branch"; TAG_PREFIX="cli-desktop-v"; DIST_BRANCH="cli-desktop-dist" ;;
     extension) APP_DIR="apps/browser-extension"; MODE="ci-tag"; TAG_PREFIX="extension-v" ;;
-    cli)       APP_DIR="apps/cli";               MODE="ci-tag"; TAG_PREFIX="cli-v" ;;
     desktop)   APP_DIR="apps/desktop";           MODE="ci-tag"; TAG_PREFIX="desktop-v" ;;
-    *) die "unknown app '$APP' — valid: edge, protocol, schemas, wallpapers, api-client, cli-host, cli-mirror, cli-server, cli-desktop, dist, extension, cli, desktop" ;;
+    *) die "unknown app '$APP' — valid: extension, desktop, all" ;;
 esac
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git repository"
@@ -309,7 +288,7 @@ push_main_if_needed() {
     fi
 }
 
-# ── Mode: ci-tag (cli, desktop, extension) — CI builds, we only tag ──────────
+# ── Mode: ci-tag (desktop, extension) — CI builds, we only tag ──────────
 if [[ "$MODE" == "ci-tag" ]]; then
     # release.yml re-asserts these, but it does so AFTER the tag is pushed —
     # which is how extension-v3.1.1 came to exist with no release behind it

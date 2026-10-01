@@ -1,21 +1,15 @@
 name: release
 
-# Tag-per-app releases (decided in the migration plan): pushing cli-vX.Y.Z /
-# desktop-vX.Y.Z / extension-vX.Y.Z / edge-vX.Y.Z builds that app
-# and attaches its artifacts to the GitHub Release for the tag. canvas-fuse and canvas-web
-# release from their own repos the same way (v* tags there). Each job asserts the tag version
-# matches the app's manifest so a stray tag can't publish mislabeled artifacts.
-#
-# canvas-server consumes protocol/edge from the *-dist branches, which
-# dist.yml republishes on every push to main; the tagged tarballs here are the
-# immutable pins. housekeeping.yml keeps 5 runs per workflow and 5 releases
-# per app.
+# Tag-per-app releases for the apps still in this repo (interim — both move
+# to their own repos): pushing desktop-vX.Y.Z / extension-vX.Y.Z builds that
+# app and attaches its artifacts to the GitHub Release. Each job asserts the
+# tag version matches the app's manifest. The shared packages publish to npm
+# (npm-publish.yml); canvas-web, canvas-cli and canvas-fuse release from their
+# own repos. housekeeping.yml keeps 5 runs per workflow and 5 releases per app.
 
 on:
   push:
     tags:
-      - 'cli-v*'
-      - 'edge-v*'
       - 'desktop-v*'
       - 'extension-v*'
   workflow_dispatch:
@@ -28,132 +22,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # The *-dist branches themselves are pushed by scripts/update-releases.sh
-  # (CI never writes to the repo); this job pins a tagged edge version as a
-  # tarball on the GitHub Release. npm publishing is npm-publish.yml's job.
-  edge:
-    if: startsWith(github.ref_name, 'edge-v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Assert tag matches runtimes/edge version
-        run: |
-          v="${GITHUB_REF_NAME#edge-v}"
-          m=$(node -p "require('./runtimes/edge/package.json').version")
-          [ "$v" = "$m" ] || { echo "tag $v != manifest $m"; exit 1; }
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @augmentd-labs/canvas-edge run test
-      - run: node scripts/pack-dist.mjs edge --out artifacts --pack
-      - name: Checksums
-        run: cd artifacts && sha256sum *.tgz > SHA256SUMS
-      - uses: softprops/action-gh-release@v2
-        with:
-          name: canvas-edge ${{ github.ref_name }}
-          body: >
-            Self-contained canvas-edge package (device runtime: folder mirrors +
-            edge tunnel). Bundles canvas-protocol and canvas-stored; registry
-            dependencies only. Install the moving branch with
-            `canvas mirror edge install` (edge-dist branch), or pin this
-            tarball URL.
-          files: |
-            artifacts/*.tgz
-            artifacts/SHA256SUMS
-
-  cli:
-    if: startsWith(github.ref_name, 'cli-v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write # npm provenance attestation
-    steps:
-      - uses: actions/checkout@v4
-      - name: Assert tag matches apps/cli version
-        run: |
-          v="${GITHUB_REF_NAME#cli-v}"
-          m=$(node -p "require('./apps/cli/package.json').version")
-          [ "$v" = "$m" ] || { echo "tag $v != manifest $m"; exit 1; }
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          # Writes the .npmrc auth line that reads NODE_AUTH_TOKEN below.
-          registry-url: https://registry.npmjs.org
-      - uses: oven-sh/setup-bun@v2
-      - run: pnpm install --frozen-lockfile
-      # bun cross-compiles all targets from one Linux runner.
-      - name: Build binaries
-        run: |
-          pnpm --filter @augmentd-labs/canvas-cli run build:linux
-          pnpm --filter @augmentd-labs/canvas-cli run build:linux-arm
-          pnpm --filter @augmentd-labs/canvas-cli run build:macos
-          pnpm --filter @augmentd-labs/canvas-cli run build:macos-arm
-          pnpm --filter @augmentd-labs/canvas-cli run build:windows
-      # Never attach a binary that doesn't start or reports the wrong version.
-      # Same script ci.yml runs, so a green PR means a releasable build.
-      - name: Verify binaries
-        run: bash apps/cli/scripts/verify-binaries.sh "${GITHUB_REF_NAME#cli-v}"
-      - name: Checksums
-        run: cd apps/cli/dist && sha256sum canvas-* > SHA256SUMS
-      - uses: softprops/action-gh-release@v2
-        with:
-          name: canvas-cli ${{ github.ref_name }}
-          body: >
-            Single-file canvas CLI binaries (bun-compiled) for Linux
-            x64/arm64, macOS x64/arm64 and Windows x64.
-          files: |
-            apps/cli/dist/canvas-linux
-            apps/cli/dist/canvas-linux-arm
-            apps/cli/dist/canvas-macos
-            apps/cli/dist/canvas-macos-arm
-            apps/cli/dist/canvas-windows.exe
-            apps/cli/dist/SHA256SUMS
-
-      # npm publish runs AFTER the GitHub Release so a registry hiccup can
-      # never cost you the binaries. The CLI's three workspace deps go first —
-      # pnpm rewrites "workspace:*" to the real versions when it packs, so
-      # they must already exist on the registry by the time the CLI lands
-      # (cli-host included: it is a runtime dependency of the CLI).
-      # Each is skipped when that exact version is already published:
-      # packages/* bump far less often than the CLI, and a cli-v tag must not
-      # fail just because canvas-protocol didn't change since last release.
-      #
-      # Auth is a granular NPM_TOKEN today. Once all four packages exist on
-      # npmjs, configure Trusted Publishing (OIDC) per package and drop both
-      # the secret and NODE_AUTH_TOKEN — the id-token permission above is
-      # already what that needs.
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-        run: |
-          # No token configured (the repo has no NPM_TOKEN today) — skip
-          # rather than fail. The binaries above are already released; a
-          # missing registry credential must not paint the release red. Add
-          # the secret and the very next tag publishes, no workflow edit.
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::warning title=npm publish skipped::NPM_TOKEN is not set — GitHub Release binaries were published, npm packages were not."
-            exit 0
-          fi
-          for dir in packages/protocol packages/schemas packages/api-client packages/cli-host apps/cli; do
-            name=$(node -p "require('./$dir/package.json').name")
-            ver=$(node -p "require('./$dir/package.json').version")
-            if npm view "$name@$ver" version >/dev/null 2>&1; then
-              echo "$name@$ver already published — skipping"
-              continue
-            fi
-            echo "Publishing $name@$ver"
-            pnpm --filter "$name" publish --access public --no-git-checks
-          done
-
   # Was built on a maintainer's laptop by scripts/update-releases.sh and
   # uploaded with `gh release create`. Built here instead so the zips users
   # install come from a clean runner with a frozen lockfile — and so the same

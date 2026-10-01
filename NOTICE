@@ -22,13 +22,12 @@ Contact:
 PART OF CANVAS
 --------------
 
-This repository holds the Canvas open layer: the client applications and the
-shared packages they are built on.
+This repository holds the shared packages of the Canvas open layer, the
+canvas-edge device runtime and, until they move to their own repositories,
+two client applications.
 
-    apps/cli                    command-line client
     apps/browser-extension      Chrome and Firefox extensions
     apps/desktop                desktop app
-    apps/shell                  shell client and applets
     packages/protocol           wire contract (envelope, codes, routes, events)
     packages/schemas            document schema ids, versions, builders
     packages/api-client         REST client over the protocol package

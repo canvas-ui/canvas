@@ -1,31 +1,21 @@
 #!/usr/bin/env node
-// Stages a shared component as a self-contained npm package — the `*-dist`
-// artifacts other repos fetch straight from git:
+// Stages a shared package as a self-contained npm package — what
+// scripts/publish-npm.mjs publishes to npm (and what `--pack` writes as a
+// tarball for inspection).
 //
-//   "@augmentd-labs/canvas-edge":     "github:canvas-ui/canvas-common#edge-dist"
-//   "@augmentd-labs/canvas-protocol": "github:canvas-ui/canvas-common#protocol-dist"
-//
-// (The web UI moved to canvas-ui/canvas-web, which publishes its own web-dist.)
-//
-// Rule: a dist artifact has REGISTRY dependencies only. Workspace deps
-// (`workspace:*`) and git deps (`github:…`) are copied into the artifact's own
-// node_modules and listed as bundleDependencies, and their registry deps are
-// merged into the artifact's. Consumers with npm's allow-git=root would refuse
-// a transitive git dep; bundling sidesteps that and pins what was built.
-//
-// Registry mode ({ registry: true }, used by scripts/publish-npm.mjs): workspace
-// deps become `^<version>` dependencies on the sibling packages published to
-// npm instead of being bundled; git deps are still bundled. The root LICENSE is
+// Rule: the staged package has REGISTRY dependencies only. Git deps (edge's
+// `github:canvas-ui/canvas-stored#main`) are copied into the package's own
+// node_modules and listed as bundleDependencies, their registry deps merged
+// into the package's. Registry mode ({ registry: true }, what publish-npm
+// uses) turns workspace deps into `^<version>` deps on the sibling packages
+// published to npm; without it they are bundled too. The root LICENSE is
 // copied into any package that has none of its own.
 //
 // Usage:
 //   node scripts/pack-dist.mjs <target|all> [--out artifacts] [--pack] [--registry]
 //
-// Targets: protocol schemas wallpapers api-client edge cli-host cli-mirror
-// cli-server cli-desktop (see TARGETS).
-// Output: <out>/dist/<target>/  — a directory ready to `git init` + push as
-// the `<target>-dist` branch (scripts/update-releases.sh) or to `npm pack`
-// (--pack writes <out>/<name>-<version>.tgz for the GitHub Release).
+// Targets: protocol schemas wallpapers api-client edge (see TARGETS).
+// Output: <out>/dist/<target>/; --pack also writes <out>/<name>-<version>.tgz.
 
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -34,21 +24,13 @@ import { execFileSync } from 'node:child_process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// name (branch prefix) → source. `built: true` = ship the build output only.
+// target name → source directory.
 export const TARGETS = {
     protocol: { dir: 'packages/protocol' },
     schemas: { dir: 'packages/schemas' },
     wallpapers: { dir: 'packages/wallpapers' },
     'api-client': { dir: 'packages/api-client' },
     edge: { dir: 'runtimes/edge' },
-    // CLI packages fetched on demand by `canvas package install <key>`: one
-    // self-contained ESM file. A bun-compiled CLI can import an external file
-    // but cannot resolve bare specifiers from it, so nothing may be left to
-    // resolve at runtime — esbuild inlines the SDK, api-client, clack, chalk…
-    'cli-host': { dir: 'packages/cli-host' },
-    'cli-mirror': { dir: 'packages/cli-mirror', bundle: 'src/index.js' },
-    'cli-server': { dir: 'packages/cli-server', bundle: 'src/index.js' },
-    'cli-desktop': { dir: 'packages/cli-desktop', bundle: 'src/index.js' },
 };
 
 const META_FILES = ['package.json', 'LICENSE', 'LICENSE.md', 'NOTICE', 'README.md'];
@@ -90,8 +72,8 @@ function copyPackageFiles(srcDir, pkg, dest, extra = []) {
 
 /**
  * Bundle one non-registry dependency into `<parentDir>/node_modules/<name>`.
- * Its own non-registry deps nest underneath the same way (cli-mirror →
- * cli-host → api-client → protocol); registry deps are merged upward and
+ * Its own non-registry deps nest underneath the same way (a git dep of a
+ * git dep); registry deps are merged upward and
  * declared once on the artifact, where npm hoists them for every level.
  */
 function bundleDep(parentDir, name, spec, fromDir) {
@@ -136,24 +118,6 @@ function workspaceDir(name) {
     throw new Error(`workspace package ${name} not found`);
 }
 
-/** esbuild a package into stage/dist/index.js with every dependency inlined (node builtins stay external). */
-async function bundleSingleFile(srcDir, entry, stageDir) {
-    const esbuild = await import('esbuild');
-    mkdirSync(join(stageDir, 'dist'), { recursive: true });
-    await esbuild.build({
-        entryPoints: [join(srcDir, entry)],
-        outfile: join(stageDir, 'dist', 'index.js'),
-        bundle: true,
-        platform: 'node',
-        format: 'esm',
-        target: 'node20',
-        // CJS deps (debug, chalk's supports-color probe) need a `require` in ESM output.
-        banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
-        logLevel: 'warning',
-        legalComments: 'none',
-    });
-}
-
 export async function stage(targetName, { out = join(root, 'artifacts'), registry = false } = {}) {
     const t = TARGETS[targetName];
     if (!t) throw new Error(`unknown target '${targetName}' (${Object.keys(TARGETS).join(', ')})`);
@@ -163,33 +127,6 @@ export async function stage(targetName, { out = join(root, 'artifacts'), registr
     rmSync(stageDir, { recursive: true, force: true });
     mkdirSync(stageDir, { recursive: true });
     const rev = gitRev();
-
-    if (t.built) {
-        if (t.check && !existsSync(join(srcDir, t.check))) throw new Error(`No build at ${join(srcDir, t.check)} — build ${t.dir} first`);
-        for (const entry of t.include) cpSync(join(srcDir, entry), join(stageDir, entry), { recursive: true });
-        for (const f of META_FILES) if (f !== 'package.json' && existsSync(join(srcDir, f))) cpSync(join(srcDir, f), join(stageDir, f));
-        const manifest = {
-            name: t.name || pkg.name,
-            version: pkg.version,
-            description: `${pkg.description || t.name} (prebuilt dist artifact)`,
-            license: pkg.license,
-            repository: pkg.repository,
-            files: t.include,
-            canvasRev: rev,
-            canvasSource: t.dir,
-        };
-        writeFileSync(join(stageDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
-        return { stageDir, name: manifest.name, version: manifest.version };
-    }
-
-    if (t.bundle) {
-        await bundleSingleFile(srcDir, t.bundle, stageDir);
-        for (const f of META_FILES) if (f !== 'package.json' && existsSync(join(srcDir, f))) cpSync(join(srcDir, f), join(stageDir, f));
-        const manifest = { ...pkg, exports: { '.': './dist/index.js' }, main: './dist/index.js', files: ['dist'], dependencies: {}, description: `${pkg.description || pkg.name} (single-file dist artifact)`, canvasRev: rev, canvasSource: t.dir };
-        delete manifest.scripts; delete manifest.devDependencies; delete manifest.publishConfig;
-        writeFileSync(join(stageDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
-        return { stageDir, name: manifest.name, version: manifest.version, bundled: ['(inlined)'] };
-    }
 
     copyPackageFiles(srcDir, pkg, stageDir);
     if (!existsSync(join(stageDir, 'LICENSE')) && existsSync(join(root, 'LICENSE'))) cpSync(join(root, 'LICENSE'), join(stageDir, 'LICENSE'));

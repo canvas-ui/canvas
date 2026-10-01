@@ -2,9 +2,8 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 // Root config covers packages/** and runtimes/**. Apps keep the configs they arrived
-// with (apps/cli lints itself via its own eslint.config.js through
-// `pnpm -r run lint`). Rule block mirrors apps/cli so packages and apps
-// share one style.
+// with (linted through `pnpm -r run lint`). Rule block mirrors canvas-cli's so
+// the repos share one style.
 export default [
     {
         ignores: ['apps/**', '**/node_modules/**', '**/dist/**', '**/coverage/**']

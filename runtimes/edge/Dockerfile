@@ -1,10 +1,10 @@
 # canvas-edge — a workspace mirror in a container (docs/durable-workspaces.md,
-# step 4). Installs the self-contained `edge-dist` artifact; no build step, no
+# step 4). Installs @augmentd-labs/canvas-edge from npm; no build step, no
 # git. Unprivileged, outbound-only: the daemon dials the hub, nothing listens
 # on the network (the control socket lives on the /config volume).
 #
 #   docker build -t canvas-edge -f runtimes/edge/Dockerfile .
-#   docker build --build-arg EDGE_PACKAGE=<tarball url or path> …
+#   docker build --build-arg EDGE_PACKAGE=@augmentd-labs/canvas-edge@0.4.0 …   (or a tarball)
 #
 # Volumes
 #   /config   remotes.json, mirrors.json, device.json, run/edge.sock, var/log
@@ -16,7 +16,7 @@
 #   CANVAS_DIRECTION=bi|pull|push  CANVAS_DEVICE_ID  CANVAS_DEVICE_NAME  optional
 FROM node:22-bookworm-slim
 
-ARG EDGE_PACKAGE=https://codeload.github.com/canvas-ui/canvas/tar.gz/edge-dist
+ARG EDGE_PACKAGE=@augmentd-labs/canvas-edge@latest
 ENV NODE_ENV=production \
     CANVAS_EDGE_HOME=/config \
     CANVAS_DEVICE_FILE=/config/device.json \

@@ -90,12 +90,11 @@ The server runtime and the services behind it, together the engine:
     [dual]  packages/*      (monorepo)   shared libraries: protocol, schemas,
                             api-client
 
-The client applications, AGPL-only for everyone. Most live in the Canvas
-monorepo, https://github.com/canvas-ui/canvas:
+The client applications, AGPL-only for everyone (desktop and the browser
+extension still in https://github.com/canvas-ui/canvas-common, moving out):
 
-    [AGPL]  apps/cli               (monorepo) command-line client
-    [AGPL]  apps/web               (monorepo) web UI, served by this server
-    [AGPL]  apps/shell             (monorepo) shell client and applets
+    [AGPL]  canvas-cli             (repository) command-line client and shell
+    [AGPL]  canvas-web             (repository) web UI, served by this server
     [AGPL]  apps/desktop           (monorepo) desktop app
     [AGPL]  apps/browser-extension (monorepo) Chrome and Firefox extensions
     [AGPL]  canvas-fuse            (repository) FUSE filesystem client
