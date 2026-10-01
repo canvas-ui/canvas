@@ -2,7 +2,7 @@ name: housekeeping
 
 # Keeps the Actions history and the Releases page short: at most KEEP_RUNS
 # completed runs per workflow and KEEP_RELEASES releases per app (grouped by
-# tag prefix: cli-v, web-v, edge-v, desktop-v, extension-v, …). Older releases
+# tag prefix: cli-v, edge-v, desktop-v, extension-v, …). Older releases
 # are deleted together with their tags. Runs after every ci/release/dist run
 # and once a day.
 

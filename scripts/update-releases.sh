@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # update-releases.sh — ONE command to release any app in this monorepo.
 #
-#   npm run release:web                       build + publish the web-dist branch
 #   npm run release:edge                      publish the edge-dist branch (runtimes/edge)
 #   npm run release:dist                      every dist branch: protocol schemas wallpapers
 #                                             api-client cli-host cli-mirror cli-server
-#                                             cli-desktop edge web  (scripts/pack-dist.mjs)
+#                                             cli-desktop edge  (scripts/pack-dist.mjs)
 #   npm run release:extension                 tag extension-v<ver> → CI builds both zips
 #   npm run release:cli                       tag cli-v<ver> → CI builds + publishes
 #   npm run release:desktop                   tag desktop-v<ver> → CI builds (multi-OS)
 #   npm run release:all                       all of the above; already-released
-#                                             versions are skipped, web always republishes
+#                                             versions are skipped, dist branches republish
 #
 #   any of the above -- --bump patch|minor|major   bump the app version first (committed)
 #   branch apps     -- --tag                       ALSO tag <app>-v<ver> when unreleased (pinned tarball via CI)
@@ -21,13 +20,13 @@
 #   any             -- --allow-dirty               skip the clean-tree check (hacking only)
 #
 # Per-app release modes (why they differ):
-#   web, edge, protocol, schemas, wallpapers, api-client
+#   edge, protocol, schemas, wallpapers, api-client, cli-*
 #              stage a self-contained package (scripts/pack-dist.mjs: registry
 #              deps only, workspace/git deps bundled) → force-push it to the
 #              `<app>-dist` branch. Consumers pin the branch straight from git:
-#              "canvas-web": "github:canvas-ui/canvas#web-dist",
-#              "@augmentd-labs/canvas-edge": "github:canvas-ui/canvas#edge-dist"
-#              and re-resolve on `npm update <name>`. `dist` = all six in order.
+#              "@augmentd-labs/canvas-edge": "github:canvas-ui/canvas-common#edge-dist"
+#              and re-resolve on `npm update <name>`. `dist` = all of them in order.
+#              (The web UI releases from canvas-ui/canvas-web.)
 #   extension  tag extension-v<ver> + push — release.yml builds both zips.
 #   cli        tag cli-v<ver> + push — release.yml builds and publishes.
 #   desktop    tag desktop-v<ver> + push — release.yml builds (needs CI's
@@ -52,7 +51,7 @@ tree_is_dirty() {
 }
 
 APP="${1:-}"
-[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: web | edge | protocol | schemas | wallpapers | api-client | cli-host | cli-mirror | cli-server | cli-desktop | dist | extension | cli | desktop (see --help)"
+[[ -n "$APP" && "$APP" != -* ]] || die "first argument must be the app: edge | protocol | schemas | wallpapers | api-client | cli-host | cli-mirror | cli-server | cli-desktop | dist | extension | cli | desktop (see --help)"
 shift
 
 BUMP=""
@@ -78,9 +77,9 @@ done
 
 # ── `all`: every app in sequence ─────────────────────────────────────────────
 # Tagged apps skip when their current version is already released. Without
-# --if-needed, web always republishes (the branch is idempotent). With
-# --if-needed, web skips too unless something shippable moved.
-DIST_APPS=(protocol schemas wallpapers api-client cli-host cli-mirror cli-server cli-desktop edge web)
+# --if-needed, dist branches always republish (idempotent). With --if-needed,
+# they skip unless something shippable moved.
+DIST_APPS=(protocol schemas wallpapers api-client cli-host cli-mirror cli-server cli-desktop edge)
 if [[ "$APP" == "all" || "$APP" == "dist" ]]; then
     # The clean-tree check runs ONCE here: earlier apps' builds may regenerate
     # files (theme fallbacks etc.), which must not fail the apps after them.
@@ -104,7 +103,6 @@ fi
 
 # ── App recipes ──────────────────────────────────────────────────────────────
 case "$APP" in
-    web)        APP_DIR="apps/web";               MODE="branch"; TAG_PREFIX="web-v";        DIST_BRANCH="web-dist" ;;
     edge)       APP_DIR="runtimes/edge";          MODE="branch"; TAG_PREFIX="edge-v";       DIST_BRANCH="edge-dist" ;;
     protocol)   APP_DIR="packages/protocol";      MODE="branch"; TAG_PREFIX="protocol-v";   DIST_BRANCH="protocol-dist" ;;
     schemas)    APP_DIR="packages/schemas";       MODE="branch"; TAG_PREFIX="schemas-v";    DIST_BRANCH="schemas-dist" ;;
@@ -117,7 +115,7 @@ case "$APP" in
     extension) APP_DIR="apps/browser-extension"; MODE="ci-tag"; TAG_PREFIX="extension-v" ;;
     cli)       APP_DIR="apps/cli";               MODE="ci-tag"; TAG_PREFIX="cli-v" ;;
     desktop)   APP_DIR="apps/desktop";           MODE="ci-tag"; TAG_PREFIX="desktop-v" ;;
-    *) die "unknown app '$APP' — valid: web, edge, protocol, schemas, wallpapers, api-client, cli-host, cli-mirror, cli-server, cli-desktop, dist, extension, cli, desktop" ;;
+    *) die "unknown app '$APP' — valid: edge, protocol, schemas, wallpapers, api-client, cli-host, cli-mirror, cli-server, cli-desktop, dist, extension, cli, desktop" ;;
 esac
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git repository"
@@ -348,16 +346,8 @@ if [[ "$MODE" == "ci-tag" ]]; then
 fi
 
 # ── Mode: branch — stage a self-contained package, publish the <app>-dist branch
-if [[ "$APP" == "web" ]]; then
-    say "Installing (filtered, frozen lockfile)..."
-    corepack pnpm install --filter canvas-web... --frozen-lockfile >/dev/null || die "pnpm install failed"
-    say "Building apps/web $ver..."
-    corepack pnpm --filter canvas-web run build >/dev/null || die "web build failed"
-    [[ -f "$APP_DIR/dist/index.html" ]] || die "build produced no dist/index.html"
-else
-    say "Installing (frozen lockfile)..."
-    corepack pnpm install --frozen-lockfile >/dev/null || die "pnpm install failed"
-fi
+say "Installing (frozen lockfile)..."
+corepack pnpm install --frozen-lockfile >/dev/null || die "pnpm install failed"
 
 out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT
@@ -407,4 +397,4 @@ else
     say "--no-push: $DIST_BRANCH commit assembled ($dist_sha); re-run without --no-push to publish"
 fi
 
-say "Done: $dist_name $ver (main@$rev) → $DIST_BRANCH. Consumers pick it up on their next \`npm update $dist_name\`; pin: \"$dist_name\": \"github:canvas-ui/canvas#$DIST_BRANCH\""
+say "Done: $dist_name $ver (main@$rev) → $DIST_BRANCH. Consumers pick it up on their next \`npm update $dist_name\`; pin: \"$dist_name\": \"github:canvas-ui/canvas-common#$DIST_BRANCH\""

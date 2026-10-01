@@ -13,7 +13,6 @@
     "format": "prettier --write \"packages/**/*.{js,md,json}\"",
     "changeset": "changeset",
     "pack:dist": "node scripts/pack-dist.mjs all",
-    "release:web": "bash scripts/update-releases.sh web",
     "release:edge": "bash scripts/update-releases.sh edge",
     "release:dist": "bash scripts/update-releases.sh dist",
     "release:extension": "bash scripts/update-releases.sh extension",

@@ -44,7 +44,6 @@ integrations/
 - [`apps/cli`](apps/cli/README.md) — Canvas CLI (bun-compiled binaries)
 - [`apps/desktop`](apps/desktop/README.md) — Tauri desktop app
 - [`apps/browser-extension`](apps/browser-extension/README.md) — Chromium + Firefox extension
-- [`apps/web`](apps/web/README.md) — web UI (vite/react)
 - [`runtimes/edge`](runtimes/edge/README.md) — `canvas-edge` daemon (`canvas mirror edge install`)
 
 ## Shared components straight from git
@@ -55,14 +54,16 @@ dependencies are bundled inside — `scripts/pack-dist.mjs`):
 
 | pin | source |
 |---|---|
-| `"canvas-web": "github:canvas-ui/canvas#web-dist"` | `apps/web` (built) |
-| `"@augmentd-labs/canvas-edge": "github:canvas-ui/canvas#edge-dist"` | `runtimes/edge` |
-| `"@augmentd-labs/canvas-protocol": "github:canvas-ui/canvas#protocol-dist"` | `packages/protocol` |
-| `"@augmentd-labs/canvas-api-client": "github:canvas-ui/canvas#api-client-dist"` | `packages/api-client` |
-| `"@augmentd-labs/canvas-schemas": "github:canvas-ui/canvas#schemas-dist"` | `packages/schemas` |
-| `"@augmentd-labs/canvas-wallpapers": "github:canvas-ui/canvas#wallpapers-dist"` | `packages/wallpapers` |
+| `"@augmentd-labs/canvas-edge": "github:canvas-ui/canvas-common#edge-dist"` | `runtimes/edge` |
+| `"@augmentd-labs/canvas-protocol": "github:canvas-ui/canvas-common#protocol-dist"` | `packages/protocol` |
+| `"@augmentd-labs/canvas-api-client": "github:canvas-ui/canvas-common#api-client-dist"` | `packages/api-client` |
+| `"@augmentd-labs/canvas-schemas": "github:canvas-ui/canvas-common#schemas-dist"` | `packages/schemas` |
+| `"@augmentd-labs/canvas-wallpapers": "github:canvas-ui/canvas-common#wallpapers-dist"` | `packages/wallpapers` |
 | `cli-mirror-dist`, `cli-server-dist`, `cli-desktop-dist` (single-file, fetched by `canvas package install`) | `packages/cli-*` |
-| `"@augmentd-labs/canvas-cli-host": "github:canvas-ui/canvas#cli-host-dist"` | `packages/cli-host` (CLI extension SDK) |
+| `"@augmentd-labs/canvas-cli-host": "github:canvas-ui/canvas-common#cli-host-dist"` | `packages/cli-host` (CLI extension SDK) |
+
+The web UI lives in [canvas-web](https://github.com/canvas-ui/canvas-web) and
+publishes its own `web-dist` branch there.
 
 `dist.yml` republishes all of them on every push to main (only the ones whose
 sources moved); `npm run release:dist` (or `~/Code/canvas/canvas-stack.sh
@@ -71,7 +72,7 @@ stages every artifact on each PR and installs the edge one from a git URL, so
 a broken bundle fails review rather than a release. `housekeeping.yml` keeps
 the last 5 runs per workflow and the last 5 releases per app (older tags go
 with them). `edge-v*` tags also pin a tarball on the GitHub
-Release (and publish to npm once an `NPM_TOKEN` exists), like `web-v*`.
+Release (and publish to npm once an `NPM_TOKEN` exists).
 
 ## Development
 

@@ -26,7 +26,6 @@ This repository holds the Canvas open layer: the client applications and the
 shared packages they are built on.
 
     apps/cli                    command-line client
-    apps/web                    web UI
     apps/browser-extension      Chrome and Firefox extensions
     apps/desktop                desktop app
     apps/shell                  shell client and applets
@@ -36,7 +35,7 @@ shared packages they are built on.
 
 This repository is one component of the Canvas project:
 
-    this repository  https://github.com/canvas-ui/canvas
+    this repository  https://github.com/canvas-ui/canvas-common
     the project      https://github.com/canvas-ui/canvas-server
 
 Canvas components are not all licensed the same way. The server runtime and
@@ -57,12 +56,6 @@ is rarely the one that applies to them. Sections 4 to 6 are. If you convey
 these programs, modified or not, through an app store, an extension gallery, a
 package registry, a distribution image or an appliance, recipients must
 receive this licence and an offer of the corresponding source.
-
-The web UI (apps/web) is the exception: it is served to users by
-canvas-server, and when it is, it forms part of a program made available over
-a network. Section 13 of the AGPL applies to that combined work. If you serve
-a modified web UI, its users must be able to obtain the corresponding source
-of your modifications.
 
 If you build against a modified Canvas server, section 13 reaches that server
 too. See the project NOTICE.

@@ -35,8 +35,7 @@ jobs:
         run: bash apps/cli/scripts/verify-binaries.sh "$(node -p "require('./apps/cli/package.json').version")"
       # Desktop frontend and native installers are built by the desktop job.
       - run: pnpm --filter canvas-browser-extension run build
-      - run: pnpm --filter canvas-web run build
-      # Every git-fetchable artifact (web, protocol, schemas, wallpapers,
+      # Every git-fetchable artifact (protocol, schemas, wallpapers,
       # api-client, edge) must stage as a self-contained package on every PR,
       # so a broken bundle fails review, not `npm run release:dist`.
       - name: Stage dist artifacts (pack-dist)

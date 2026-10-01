@@ -2,9 +2,10 @@
 // Stages a shared component as a self-contained npm package — the `*-dist`
 // artifacts other repos fetch straight from git:
 //
-//   "canvas-web":                     "github:canvas-ui/canvas#web-dist"
-//   "@augmentd-labs/canvas-edge":     "github:canvas-ui/canvas#edge-dist"
-//   "@augmentd-labs/canvas-protocol": "github:canvas-ui/canvas#protocol-dist"
+//   "@augmentd-labs/canvas-edge":     "github:canvas-ui/canvas-common#edge-dist"
+//   "@augmentd-labs/canvas-protocol": "github:canvas-ui/canvas-common#protocol-dist"
+//
+// (The web UI moved to canvas-ui/canvas-web, which publishes its own web-dist.)
 //
 // Rule: a dist artifact has REGISTRY dependencies only. Workspace deps
 // (`workspace:*`) and git deps (`github:…`) are copied into the artifact's own
@@ -15,12 +16,11 @@
 // Usage:
 //   node scripts/pack-dist.mjs <target|all> [--out artifacts] [--pack]
 //
-// Targets: web protocol schemas wallpapers api-client edge cli-host cli-mirror
+// Targets: protocol schemas wallpapers api-client edge cli-host cli-mirror
 // cli-server cli-desktop (see TARGETS).
 // Output: <out>/dist/<target>/  — a directory ready to `git init` + push as
 // the `<target>-dist` branch (scripts/update-releases.sh) or to `npm pack`
 // (--pack writes <out>/<name>-<version>.tgz for the GitHub Release).
-// Builds are the caller's job (web needs `pnpm --filter canvas-web run build`).
 
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -31,7 +31,6 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // name (branch prefix) → source. `built: true` = ship the build output only.
 export const TARGETS = {
-    web: { dir: 'apps/web', built: true, name: 'canvas-web', include: ['dist'], check: 'dist/index.html' },
     protocol: { dir: 'packages/protocol' },
     schemas: { dir: 'packages/schemas' },
     wallpapers: { dir: 'packages/wallpapers' },

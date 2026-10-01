@@ -1,12 +1,12 @@
 name: release
 
 # Tag-per-app releases (decided in the migration plan): pushing cli-vX.Y.Z /
-# web-vX.Y.Z / desktop-vX.Y.Z / extension-vX.Y.Z / edge-vX.Y.Z builds that app
-# and attaches its artifacts to the GitHub Release for the tag. canvas-fuse releases from
-# its own repo the same way (v* tags there). Each job asserts the tag version
+# desktop-vX.Y.Z / extension-vX.Y.Z / edge-vX.Y.Z builds that app
+# and attaches its artifacts to the GitHub Release for the tag. canvas-fuse and canvas-web
+# release from their own repos the same way (v* tags there). Each job asserts the tag version
 # matches the app's manifest so a stray tag can't publish mislabeled artifacts.
 #
-# canvas-server consumes web/protocol/edge from the *-dist branches, which
+# canvas-server consumes protocol/edge from the *-dist branches, which
 # dist.yml republishes on every push to main; the tagged tarballs here are the
 # immutable pins. housekeeping.yml keeps 5 runs per workflow and 5 releases
 # per app.
@@ -15,7 +15,6 @@ on:
   push:
     tags:
       - 'cli-v*'
-      - 'web-v*'
       - 'edge-v*'
       - 'desktop-v*'
       - 'extension-v*'
@@ -29,37 +28,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  web:
-    if: startsWith(github.ref_name, 'web-v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Assert tag matches apps/web version
-        run: |
-          v="${GITHUB_REF_NAME#web-v}"
-          m=$(node -p "require('./apps/web/package.json').version")
-          [ "$v" = "$m" ] || { echo "tag $v != manifest $m"; exit 1; }
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter canvas-web run build
-      - run: node scripts/pack-web-artifact.mjs artifacts
-      - name: Checksums
-        run: cd artifacts && sha256sum *.tgz > SHA256SUMS
-      - uses: softprops/action-gh-release@v2
-        with:
-          name: canvas-web ${{ github.ref_name }} (prebuilt dist)
-          body: >
-            Prebuilt web UI artifact for canvas-server. Dependency-free
-            tarball (package.json + dist/); consume as an npm tarball-URL
-            dependency and pin the exact URL.
-          files: |
-            artifacts/*.tgz
-            artifacts/SHA256SUMS
-
   # The *-dist branches themselves are pushed by scripts/update-releases.sh
   # (CI never writes to the repo); this job pins a tagged edge version as a
   # tarball on the GitHub Release and publishes it to npm once a token exists.
