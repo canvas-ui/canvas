@@ -33,9 +33,7 @@ jobs:
           pnpm --filter @augmentd-labs/canvas-cli run build:windows
       - name: Verify CLI binaries
         run: bash apps/cli/scripts/verify-binaries.sh "$(node -p "require('./apps/cli/package.json').version")"
-      # Frontend builds only; the Tauri (Rust) bundle needs its own toolchain
-      # and is not part of this pipeline yet.
-      - run: pnpm --filter canvas-desktop run build
+      # Desktop frontend and native installers are built by the desktop job.
       - run: pnpm --filter canvas-browser-extension run build
       - run: pnpm --filter canvas-web run build
       # Every git-fetchable artifact (web, protocol, schemas, wallpapers,
@@ -55,3 +53,8 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund "git+file://$bare#edge-dist"
           test -d node_modules/@augmentd-labs/canvas-edge/node_modules/canvas-stored
           CANVAS_USER_HOME=/tmp/edge-ci timeout 8 node node_modules/.bin/canvas-edge --foreground || [ $? -eq 124 ]
+
+  desktop:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/desktop-build.yml
