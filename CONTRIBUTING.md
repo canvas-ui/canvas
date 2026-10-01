@@ -1,12 +1,13 @@
-# Contributing to the Canvas monorepo
+# Contributing to canvas-common
 
-Contributions are welcome. This repository holds two kinds of code with two
-different contribution terms — check which side your change lands on.
+Contributions are welcome. Canvas has two kinds of code with two different
+contribution terms — check which side your change lands on.
 
-## `apps/*` — DCO only
+## Client applications — DCO only
 
-The client applications (CLI, web UI, browser extensions, desktop app, shell)
-are **AGPL-3.0-or-later only, for everyone, permanently**. Nothing there is
+The client applications (CLI and shell, web UI, browser extensions, desktop
+app — each in its own repository now, formerly `apps/*` here) are
+**AGPL-3.0-or-later only, for everyone, permanently**. Nothing there is
 ever sublicensed, so no CLA is asked for. Sign your commits off
 (`git commit -s`) to certify the [Developer Certificate of
 Origin](https://developercertificate.org/), and that is all.
@@ -32,15 +33,13 @@ I have read the CLA document and I hereby sign the CLA.
 
 A status check enforces this automatically on pull requests touching
 `packages/*`: the CLA bot posts instructions, records your signature (once,
-against your GitHub account) and unblocks the check. It never engages on
-`apps/*`-only pull requests.
+against your GitHub account) and unblocks the check.
 
 The reasoning behind the split is laid out in the server's
 [CONTRIBUTING.md](https://github.com/canvas-ui/canvas-server/blob/main/CONTRIBUTING.md)
 and [COMMERCIAL.md](https://github.com/canvas-ui/canvas-server/blob/main/COMMERCIAL.md).
-A pull request that touches both `apps/*` and `packages/*` needs the CLA (for
-the `packages/*` part) — signing it never changes the terms of your `apps/*`
-work, which stays AGPL + DCO.
+Signing it never changes the terms of your work on the client applications,
+which stays AGPL + DCO.
 
 ## Practical notes
 

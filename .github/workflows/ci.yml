@@ -19,8 +19,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
       - run: pnpm run test
-      # Desktop frontend and native installers are built by the desktop job.
-      - run: pnpm --filter canvas-browser-extension run build
       # Every npm package must stage as a self-contained package on every PR
       # (registry mode, exactly what npm-publish.yml publishes), so a broken
       # package fails review, not the publish.
@@ -37,7 +35,3 @@ jobs:
           test -d node_modules/@augmentd-labs/canvas-edge/node_modules/canvas-stored
           CANVAS_USER_HOME=/tmp/edge-ci timeout 8 node node_modules/.bin/canvas-edge --foreground || [ $? -eq 124 ]
 
-  desktop:
-    permissions:
-      contents: read
-    uses: ./.github/workflows/desktop-build.yml

@@ -13,8 +13,8 @@ repository with its own release pipeline:
 | [canvas-server](https://github.com/canvas-ui/canvas-server) | the server |
 | [canvas-web](https://github.com/canvas-ui/canvas-web) | web UI (`@augmentd-labs/canvas-web`) |
 | [canvas-cli](https://github.com/canvas-ui/canvas-cli) | `canvas` CLI + lazily installed CLI packages + canvas-shell |
-| [canvas-desktop](https://github.com/canvas-ui/canvas-desktop) | desktop app (moving out of `apps/desktop`) |
-| [canvas-browser-extension](https://github.com/canvas-ui/canvas-browser-extension) | browser extension (moving out of `apps/browser-extension`) |
+| [canvas-desktop](https://github.com/canvas-ui/canvas-desktop) | desktop app (Tauri) |
+| [canvas-browser-extension](https://github.com/canvas-ui/canvas-browser-extension) | Chromium + Firefox extension |
 
 ## Project screenshots
 
@@ -29,9 +29,6 @@ repository with its own release pipeline:
 ## Layout
 
 ```
-apps/                    (interim — moving to their own repos)
-  desktop                Tauri desktop app
-  browser-extension      Chromium + Firefox extension (esbuild)
 packages/
   protocol               wire contract: envelope, error codes, routes, events, sync constants
   schemas                document schema ids, versions, builders
@@ -105,13 +102,15 @@ in `integrations/` hook the OS into the same REST pipeline the web UI uses:
 ## Licensing
 
 Everything in this repository is available under the
-**AGPL-3.0-or-later** — see [LICENSE](LICENSE) and [NOTICE](NOTICE) — but the
-two halves differ beyond that:
+**AGPL-3.0-or-later** — see [LICENSE](LICENSE) and [NOTICE](NOTICE). Across
+the project, two kinds of code differ beyond that:
 
-- **`apps/*` are AGPL-only, for everyone, permanently.** No commercial
-  licence is offered for the client applications, to anyone, and none is
-  planned: the Canvas clients stay free software in all cases. Contributions
-  need only a DCO sign-off (`git commit -s`).
+- **The client applications are AGPL-only, for everyone, permanently** — now
+  in their own repositories (canvas-web, canvas-cli, canvas-desktop,
+  canvas-browser-extension; formerly `apps/*` here). No commercial licence is
+  offered for them, to anyone, and none is planned: the Canvas clients stay
+  free software in all cases. Contributions need only a DCO sign-off
+  (`git commit -s`).
 - **`packages/*` are part of the dual-licensed Canvas engine** (AGPL-3.0-or-later
   or a commercial licence), alongside `canvas-server`, `canvas-synapsd`,
   `canvas-stored`, `canvas-inferd` and `canvas-agentd`. Contributions are
@@ -123,13 +122,8 @@ for the commercial side.
 
 ## Package naming & distribution
 
-Packages use the `@augmentd-labs/canvas-*` scope — the product brands as Canvas OS; the
-GitHub org login is unrelated plumbing and npm scopes are independent of it.
-The `augmentd-labs` npm org is claimed; nothing here publishes yet.
-
-Distribution plan: workspace links inside the monorepo (forever), `file:`
-links to sibling checkouts during the transition, **GitHub Release tarballs**
-(`pnpm pack` per package, attached to a tag) once canvas-server's CI/Docker
-needs fetchable artifacts, and public npmjs when third-party adoption starts. GitHub Packages is deliberately not used: it
-requires an auth token even for public installs and chains the scope to the
-org name.
+Packages use the `@augmentd-labs/canvas-*` npm scope (Augmentd Labs funds
+Canvas and other projects; one org, `canvas-` names per project) and are
+published to public npmjs by `npm-publish.yml` with trusted publishing and
+provenance — see *Shared packages on npm* above. GitHub Packages is
+deliberately not used: it requires an auth token even for public installs.
