@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Publishes the shared packages to npm (@augmentd-labs scope) — every version
 // in PACKAGES that the registry does not have yet; published versions are
-// skipped, so this is safe to run on every push to main (npm-publish.yml).
+// skipped, so this is safe to run on every push to main (release.yml).
 //
 // Each package is staged by scripts/pack-dist.mjs in registry mode: workspace
 // deps become `^<version>` deps on the published siblings, git deps (edge's

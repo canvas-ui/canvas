@@ -23,7 +23,7 @@ canvas-edge                     # detached, logs to ~/.canvas/var/log/canvas-edg
 ## Install
 
 Published to npm as `@augmentd-labs/canvas-edge` (canvas-common's
-npm-publish.yml, on a version bump). The CLI fetches it into its own prefix:
+release.yml, on a version bump). The CLI fetches it into its own prefix:
 
 ```
 canvas remote mirror edge install      # → ~/.canvas/edge/node_modules/@augmentd-labs/canvas-edge

@@ -44,7 +44,7 @@ integrations/
 
 ## Shared packages on npm
 
-The libraries are published to npm under `@augmentd-labs` by `npm-publish.yml`
+The libraries are published to npm under `@augmentd-labs` by `release.yml`
 (`scripts/publish-npm.mjs`) whenever a package's version is new — release =
 bump the version, push main. Workspace deps become `^version` deps; edge
 bundles its git dep (canvas-stored). npm trusted publishing (GitHub OIDC), so
@@ -124,6 +124,6 @@ for the commercial side.
 
 Packages use the `@augmentd-labs/canvas-*` npm scope (Augmentd Labs funds
 Canvas and other projects; one org, `canvas-` names per project) and are
-published to public npmjs by `npm-publish.yml` with trusted publishing and
+published to public npmjs by `release.yml` with trusted publishing and
 provenance — see *Shared packages on npm* above. GitHub Packages is
 deliberately not used: it requires an auth token even for public installs.

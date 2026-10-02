@@ -20,7 +20,7 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run test
       # Every npm package must stage as a self-contained package on every PR
-      # (registry mode, exactly what npm-publish.yml publishes), so a broken
+      # (registry mode, exactly what release.yml publishes), so a broken
       # package fails review, not the publish.
       - name: Stage npm packages
         run: |
