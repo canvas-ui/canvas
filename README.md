@@ -64,10 +64,8 @@ is published as `@augmentd-labs/canvas-web`.
 ### The old `*-dist` branches
 
 Before the npm switch (2026-10) consumers installed `github:canvas-ui/canvas#<name>-dist`
-branches. They were deleted on 2026-10-02 — all but `web-dist`, which
-canvas-server's `main` (production) still pins until `dev` is merged; delete
-it then. A git bundle of every deleted branch and monorepo-era tag is kept
-outside the repo. `ci.yml` stages every npm package on each PR and
+branches. All of them were deleted on 2026-10-02; a git bundle of every
+deleted branch and monorepo-era tag is kept outside the repo. `ci.yml` stages every npm package on each PR and
 smoke-tests the edge tarball; `housekeeping.yml` keeps the last 5 runs per
 workflow.
 
