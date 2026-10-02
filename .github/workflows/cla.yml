@@ -1,6 +1,6 @@
 # CLA enforcement (CLA Assistant Lite, contributor-assistant/github-action).
 # Only packages/* is dual-licensed and CLA-covered (see CONTRIBUTING.md);
-# apps/* stays DCO-only. The workflow runs on every pull request but the
+# the client apps (their own repos now) are DCO-only. The workflow runs on every pull request but the
 # scope step gates enforcement to PRs that touch packages/** — deliberately
 # NOT an `on.paths` filter, because a required check skipped by path
 # filtering leaves the PR stuck in "Pending" forever. Apps-only PRs report

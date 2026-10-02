@@ -3,10 +3,8 @@ packages:
   - runtimes/*
 
 # pnpm 10 blocks dependency lifecycle scripts by default; allowlist per package.
-# - esbuild: scripts tooling
 # - lmdb / msgpackr-extract: runtimes/edge via canvas-stored; prebuilt binaries, the
 #   script only picks the platform package
 onlyBuiltDependencies:
-  - esbuild
   - lmdb
   - msgpackr-extract

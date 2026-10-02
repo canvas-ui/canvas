@@ -7,3 +7,6 @@ coverage/
 .env
 .env.*
 .DS_Store
+
+# Python bytecode (integrations/kde)
+__pycache__/
