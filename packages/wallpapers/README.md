@@ -1,7 +1,7 @@
 # @augmentd-labs/canvas-wallpapers
 
 Wallpapers shipped out of the box with the Canvas UIs, plus the manifest that
-describes them. Kept as its own package so `apps/web`, `apps/desktop` and any
+describes them. Kept as its own package so `canvas-web`, `canvas-desktop` and any
 later surface share one copy of the artwork, and so the artwork can carry its
 own licensing terms separate from the AGPL code around it — see `NOTICE`.
 

@@ -10,7 +10,7 @@ import { tagsToFeatures } from '../features.js';
  *
  * Tags live in `metadata.features` here, not the v3 top-level `features`:
  * synapsd reads both, but the web's edit forms still read
- * `doc.metadata?.features` (apps/web/src/components/toolbox/add/*), so a
+ * `doc.metadata?.features` (canvas-web/src/components/toolbox/add/*), so a
  * document built with top-level features would show up untagged there.
  *
  * @param {Object} [o]

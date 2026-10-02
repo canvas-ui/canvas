@@ -2,7 +2,7 @@
 // Copies this package's wallpaper files into an app's static asset directory,
 // so the app serves them at `<base>/files/...` and `<base>/thumbs/...`.
 //
-//   canvas-wallpapers-copy apps/web/public/wallpapers
+//   canvas-wallpapers-copy canvas-web/public/wallpapers
 //
 // Apps wire it into a `predev`/`prebuild` script; the destination is expected
 // to be gitignored, since it is a copy of what lives here.

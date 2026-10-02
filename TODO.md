@@ -119,7 +119,7 @@ give you an idea where we are heading.
 ## Editor registry + sketches
 
 SHIPPED 2026-09-02 (web 2.8.0, synapsd 3.19.0, server 2.6.3): editor registry
-contract (`apps/web/src/components/editors/registry.ts`), Excalidraw sketch
+contract (`canvas-web/src/components/editors/registry.ts`), Excalidraw sketch
 applet (`/apps/sketch`, toolbox Apps tab, Add → Sketch everywhere), schema
 `data/schema/drawing` (scene JSON = source of truth, PNG preview blob →
 thumbnails/cards/FUSE/WebDAV/offline all work unchanged), self-hosted fonts
@@ -253,16 +253,15 @@ terminal. The CLI was meant to be an Ollama-like single binary; bun gives a
 0.3 MB), and no JS packager does better (Node SEA 100+ MB, Deno ~80-100,
 QuickJS has no fs/process). A small static binary means a compiled core,
 and the stack already has one language for that: canvas-fuse is Rust, the
-desktop shell is Rust. This note is cross-repo (monorepo, canvas-fuse,
+desktop shell is Rust. This note is cross-repo (canvas-common, canvas-cli, canvas-desktop, canvas-fuse,
 canvas-server, canvas-stored), hence here.
 
 ### Decision
 
 1. **`canvas-core` Rust crate** — one substrate for the desktop app, a Rust
-   `canvas` CLI and canvas-fuse. Lives in the monorepo (`crates/canvas-core`,
-   Cargo workspace next to `apps/desktop/src-tauri`); canvas-fuse depends on
-   it by git until it moves into the monorepo too (it stays a separate
-   binary either way).
+   `canvas` CLI and canvas-fuse. Planned under `canvas-common/crates/canvas-core`; canvas-desktop,
+   a Rust CLI and canvas-fuse consume an explicitly versioned crate.
+   Each integration keeps its own repository and binary.
 2. **The desktop path must not depend on Node.** The Rust real-folder mirror
    daemon (below) is the Tauri sidecar/thread; canvas-edge (JS) stays for
    headless boxes and the npm CLI.
@@ -308,7 +307,7 @@ canvas-server, canvas-stored), hence here.
 
 ### Sequencing
 
-- [ ] `crates/canvas-core` scaffold in the monorepo; move `config.rs` +
+- [ ] `canvas-common/crates/canvas-core` scaffold; move `config.rs` +
       `api.rs` + `events.rs` from canvas-fuse (fuse depends on it by git ref);
       protocol-tables parity test in ci.yml.
 - [ ] Move the mirror engine (`mirror/*` minus fuse glue) into
@@ -317,11 +316,11 @@ canvas-server, canvas-stored), hence here.
       dev hub with the phase-3 scenario table (mirror both ways, offline
       queue, conflict inbox, rename). Ship as `edged-v*` release assets
       (5 to 8 MB per platform) and as the Tauri sidecar.
-- [ ] Desktop: first-run wizard + tray + sidecar supervision; `desktop-v*`
+- [ ] Desktop: first-run wizard + tray + sidecar supervision; `v*` releases in canvas-desktop;
       bundles include edged. `canvas desktop install` (CLI package) points at
       those bundles.
-- [ ] Rust `canvas` CLI: auth/remote/mirror first; release as `cli-v*`
-      assets next to the bun binaries, then replace them.
+- [ ] Rust `canvas` CLI: auth/remote/mirror first; release as `v*`
+      assets in canvas-cli next to the bun binaries, then replace them.
 - [ ] Retire: bun `build:*` targets, `packages/cli-mirror`'s fuse/daemon
       supervision (the tray owns it), pm2 paths outside `packages/cli-server`.
 
@@ -333,34 +332,25 @@ canvas-server, canvas-stored), hence here.
 - No Rust port of the web UI, browser extension or agent runtime.
 - The JS `canvas-edge` is not deleted while any headless deployment uses it.
 
-## Target topology (monorepo + server + services)
+## Target topology (independent integrations + shared packages)
 
 ```
-canvas                  AGPL-only     monorepo (public — decided Slice 1)
-  apps/
-    web                               ← canvas-web
-    cli                               ← canvas-cli (npm = lean channel; bun binaries until the Rust CLI)
-    desktop                           ← canvas-desktop (tauri) — the main entry point for most users
-    browser-extension                 ← canvas-browser-extensions
-    shell                             ← canvas-shell
-  packages/
-    protocol                          ← wire contracts (+ sync constants), the contract Rust mirrors
-    api-client                        ← ergonomic client over protocol
-    schemas                           ← extracted
-    cli-host, cli-mirror, cli-server, cli-desktop
-                                      ← CLI SDK + lazily installed CLI packages (cli-*-dist branches)
-  runtimes/
-    edge                              ← canvas-edge (JS device runtime; headless/npm path)
-  crates/                             ← PLANNED: canvas-core (Rust substrate), canvas-edged, canvas (Rust CLI)
-    plugin-api                        ← integration/adapter interfaces, new
-    messaging                         ← src/services/messaging
-    voice                             ← src/services/voice
-
-canvas-stored           AGPL+comm     standalone, ad-hoc reuse
-canvas-fuse             AGPL-only     standalone (Rust); to depend on crates/canvas-core
-canvas-synapsd          AGPL+comm     standalone, ad-hoc reuse
-canvas-server           AGPL+comm     src/{core,transports,utils} · agentd (edge moved to canvas/runtimes/edge 2026-09-06)
+canvas-common            shared npm packages: protocol, api-client, schemas, wallpapers
+                         runtimes/edge (JS headless/npm device runtime)
+                         integrations/kde
+                         PLANNED: crates/canvas-core (versioned Rust substrate)
+canvas-cli               CLI, shell/, packages/cli-* (SDK and lazy integrations)
+canvas-web               web UI
+canvas-desktop           Rust/Tauri setup and tray app
+canvas-browser-extension Chromium and Firefox extensions
+canvas-fuse              standalone Rust filesystem client
+canvas-stored            blob storage
+canvas-synapsd           context indexing
+canvas-server            hub, transports and services
 ```
+
+Each repository owns its releases and pipelines. Shared package versions are
+explicit dependencies; a shared Rust crate would follow the same model.
 
 Only open cross-repository work belongs here. Implemented behavior belongs in
 the owning package's README.
@@ -491,7 +481,7 @@ same UI shape as connectors' "Remove items deleted at the source" tickbox.
       stored UID for the folder — treat as "cannot traverse", never as
       "everything was deleted".
 - [ ] UI: per-account tickbox in `imap-mailboxes-panel.tsx` (accounts are in
-      `apps/web` ≥ 2.7.16; panel already collapses per account).
+      `canvas-web` ≥ 2.7.16; panel already collapses per account).
 - [ ] Reference: connector prune implementation in
       `canvas-server/src/core/workspace/services/connectors/index.js`
       (`#pruneContainer` — guard rails to mirror).

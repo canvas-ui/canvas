@@ -1,6 +1,6 @@
 {
     "name": "@augmentd-labs/canvas-wallpapers",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Wallpapers shipped with Canvas UIs, plus the manifest describing them",
     "license": "AGPL-3.0-or-later",
     "author": "Jozef Melich <me@idnc.sk>",
